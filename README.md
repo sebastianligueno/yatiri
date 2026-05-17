@@ -10,11 +10,11 @@
 
 ## Por qué existe
 
-La hice para uso propio. Soy docente universitario en Chile y trabajo con bibliografía en español y portugués. Los asistentes académicos que encontré priorizaban el circuito anglosajón: sus fuentes por defecto, sus criterios de relevancia y su noción de "literatura pertinente" apuntaban al Norte global en inglés.
+La hice para uso propio. Soy docente universitario en Chile y trabajo con bibliografía en inglés, pero también en español y portugués. Los asistentes académicos que encontré priorizaban el circuito anglosajón: sus fuentes por defecto, sus criterios de relevancia y su noción de "literatura pertinente" apuntaban al Norte global en inglés.
 
-Yatiri parte de otra hipótesis: la producción académica en Psicología, Ciencias Sociales, Educación e Historia tiene un circuito iberoamericano propio —con sus revistas, sus archivos y sus debates— que merece ser priorizado, no tratado como periferia. Al mismo tiempo, no ignora la literatura de corriente principal: la integra como capa adicional, no como única fuente de autoridad.
+Yatiri parte de otra hipótesis: la producción académica en Psicología, Ciencias Sociales, Educación e Historia tiene un circuito iberoamericano propio —con sus revistas, sus archivos y sus debates— que merece ser priorizado, no tratado como periferia. Al mismo tiempo, no ignoro la importancia de la literatura de corriente principal que se escribe principalmente en inglés, sino que se integra como capa adicional, no como única fuente de autoridad.
 
-El nombre viene del aymara: *yatiri* es el que sabe, el que lee señales dispersas para orientar a otros. Me lo sugirió alguien que quiero y que conoce bien ese pueblo. El nombre me pareció justo.
+Respecto al nombre, viene del aymara: *yatiri* es el que sabe, el que lee señales dispersas para orientar a otros. Me vino como inspiración de mi novia, quien conoce y ama bien ese pueblo. El nombre me pareció justo.
 
 Si te sirve para tu propio trabajo, úsala. Si la mejoras, comparte bajo la misma licencia.
 
@@ -27,11 +27,11 @@ Sesión interactiva en el terminal con la que puedes:
 - Consultar con contexto iberoamericano por defecto
 - Buscar en **SciELO** y **OpenAlex** y recibir síntesis fundamentada en las fuentes recuperadas
 - Trabajar en modos especializados: búsqueda, diseño de investigación, metodología, docencia, redacción y revisión crítica
-- Ver qué MCPs de investigación tienes instalados en Claude Code y cómo usarlos
+- Ver qué MCPs de investigación tienes instalados en Claude Code y cómo usarlos. Esto, para que la búsqueda esté integrada
 - Mantener historial de conversación dentro de la sesión
-- Crear un workspace estructurado para cada proyecto
+- Crear un espacio de trabajo estructurado para cada proyecto
 
-Funciona con **DeepSeek API** (muy bajo costo) u **Ollama** local (sin internet, sin costo).
+Funciona con **DeepSeek API** (muy bajo costo), u otra api. También se puede usar **Ollama** local (sin internet, sin costo).
 
 ---
 
@@ -65,7 +65,7 @@ Ver [INSTALL.md](INSTALL.md) para instrucciones detalladas en Windows, macOS y L
 ### Configurar la API key manualmente
 
 ```bash
-# DeepSeek (recomendado)
+# DeepSeek (recomendado, por el costo)
 export DEEPSEEK_API_KEY="tu-clave"
 
 # O guárdarla permanente:
@@ -140,9 +140,9 @@ Por defecto, `latam` —América Latina en español y portugués. Se puede cambi
 
 ## MCPs de investigación
 
-Yatiri detecta qué herramientas MCP tienes instaladas en Claude Code (Zotero, Scite, Semantic Scholar, OpenAlex, PubMed, etc.) y las muestra con el comando `/mcp`.
+Yatiri detecta qué herramientas MCP tienes instaladas en Claude Code, Codex u otros agentes vía terminal (Zotero, Scite, Semantic Scholar, OpenAlex, PubMed, etc.) y las muestra con el comando `/mcp`.
 
-**Limitación importante:** Yatiri no puede *llamar* directamente a esos MCPs —eso solo lo puede hacer Claude Code, que tiene acceso al protocolo MCP. Lo que hace es inventariarte lo disponible y sugerirte cómo usarlo desde Claude Code para búsquedas más avanzadas.
+**Limitación importante:** Yatiri no puede *llamar* directamente a esos MCPs —eso solo lo puede hacer el asistente que tiene acceso al protocolo MCP. Lo que hace es inventariarte lo disponible y sugerirte cómo usarlo desde Claude Code u otra plataforma para búsquedas más avanzadas.
 
 ---
 
@@ -156,7 +156,7 @@ El LLM está instruido para:
 - Calibrar la certeza del lenguaje según lo que los datos permiten
 - Indicar cuándo la evidencia es insuficiente en lugar de rellenar con afirmaciones plausibles
 
-Esto reduce alucinaciones bibliográficas y sesgo confirmatorio, pero no los elimina. Verifica siempre las referencias antes de usarlas.
+Esto reduce alucinaciones bibliográficas y sesgo confirmatorio, pero no los elimina. Por eso, siempre se debe verificar las referencias antes de usarlas, pero entiendo que esto es propio de cualquier trabajo de investigación
 
 ---
 
