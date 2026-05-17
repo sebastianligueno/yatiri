@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "yatiri"
+version = "0.3.0"
+description = "Yatiri — Asistente académico de terminal para investigación en Iberoamérica"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+keywords = ["research", "academia", "psychology", "social-sciences", "cli", "ai", "iberoamerica", "latam", "spanish"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Science/Research",
+  "Intended Audience :: Education",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Scientific/Engineering",
+  "Topic :: Text Processing",
+]
+dependencies = [
+  "PyYAML>=6.0",
+  "prompt_toolkit>=3.0",
+  "rich>=13.0",
+  "requests>=2.31",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=7.0",
+  "pytest-cov",
+]
+
+[project.urls]
+"Source" = "https://github.com/sebastianligueno/yatiri"
+
+[project.scripts]
+yatiri = "research_operator.main:main"
+scholar = "research_operator.main:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.package-data]
+research_operator = ["profiles/*.yaml"]

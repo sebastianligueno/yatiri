@@ -1,0 +1,29 @@
+id: historical_discourse
+label: Historical Discourse
+
+detect:
+  any_paths:
+    - data/raw
+    - data/processed
+    - data/audit
+  any_files:
+    - search_protocol.md
+    - research_design.md
+  extensions:
+    - .xml
+    - .html
+    - .md
+    - .csv
+    - .json
+
+checks:
+  - id: has_protocol
+    type: exists
+    path: search_protocol.md
+  - id: has_audit
+    type: exists
+    path: data/audit
+  - id: has_processed_outputs
+    type: min_matches
+    glob: data/processed/*.md
+    min: 3

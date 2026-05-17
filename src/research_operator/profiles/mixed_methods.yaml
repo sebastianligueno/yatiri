@@ -1,0 +1,24 @@
+id: mixed_methods
+label: Mixed Methods
+
+detect:
+  any_paths:
+    - docs
+    - paper
+    - analysis
+  any_files:
+    - README.md
+  extensions:
+    - .md
+    - .qmd
+    - .py
+    - .R
+
+checks:
+  - id: has_readme
+    type: exists
+    path: README.md
+  - id: has_docs_or_paper
+    type: min_matches
+    glob: "*.md"
+    min: 1

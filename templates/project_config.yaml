@@ -1,0 +1,98 @@
+schema_version: 1
+
+project:
+  id: example_project
+  name: Example Project
+  profile: mixed_methods
+  root: .
+  language: es
+  author: ""
+  description: ""
+
+paths:
+  docs:
+    - docs
+  manuscripts:
+    - paper
+  scripts:
+    - analysis/scripts
+  raw_data:
+    - data/raw
+  derived_data:
+    - data/derived
+  outputs:
+    - output
+  concept_maps:
+    - maps
+    - mindmaps
+  bibliography: []
+
+discovery:
+  include_globs:
+    - README.md
+    - docs/**/*.md
+    - paper/**/*.qmd
+    - analysis/scripts/**/*.R
+    - src/**/*.py
+  exclude_globs:
+    - .git/**
+    - .venv/**
+    - node_modules/**
+    - __pycache__/**
+    - .Rproj.user/**
+    - .cache/**
+
+pipeline:
+  steps: []
+
+evidence:
+  claim_style: project
+  require_support_for_assertions: true
+  support_types:
+    - quote
+    - table
+    - derived_file
+    - source_note
+    - bibliography_entry
+
+academic_search:
+  primary: scite
+  always_include:
+    - pubmed
+    - consensus
+    - scopus
+    - zotero
+  spanish_open_sources:
+    - scielo
+    - redalyc
+    - dialnet
+    - latindex
+  quality_open_priority:
+    - pubmed
+    - europe_pmc
+    - scielo
+    - openalex
+    - crossref
+  fallback_web_sources:
+    - openalex
+    - crossref
+  excluded_sources:
+    - scihub
+
+concept_mapping:
+  preferred_tool: freeplane_mcp
+  map_paths:
+    - maps
+    - mindmaps
+  default_port: 6298
+  requires_local_token: true
+
+writing:
+  active_manuscripts: []
+  default_output_format: qmd
+
+agent:
+  provider: ollama
+  model_main: phi4-mini:3.8b
+  model_light: qwen3:1.7b
+  max_context_files: 12

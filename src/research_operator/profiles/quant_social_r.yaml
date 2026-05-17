@@ -1,0 +1,32 @@
+id: quant_social_r
+label: Quant Social R
+
+detect:
+  any_paths:
+    - analysis/scripts
+    - paper
+    - data-derived
+  any_files:
+    - renv.lock
+    - _quarto.yml
+  extensions:
+    - .R
+    - .qmd
+    - .rds
+    - .csv
+
+checks:
+  - id: has_readme
+    type: exists
+    path: README.md
+  - id: has_pipeline_scripts
+    type: min_matches
+    glob: analysis/scripts/*.R
+    min: 2
+  - id: has_manuscript
+    type: min_matches
+    glob: paper/*.qmd
+    min: 1
+  - id: has_derived_data
+    type: exists
+    path: data-derived

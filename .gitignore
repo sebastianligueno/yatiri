@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Tests y cobertura
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*~
+
+# macOS
+.DS_Store
+
+# Credenciales y configuración local
+.env
+*.key
+config.local.yaml
+
+# Datos de investigación generados por yatiri init
+.research/index/
+.research/reports/
+.research/notes/
+.research/*.jsonl
+.research/project.yaml
+
+# Logs y temporales
+*.log
+*.tmp
