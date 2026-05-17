@@ -19,7 +19,7 @@ class ChatResult:
 
 
 # Orden de intento para modo "auto": primero el que tenga clave
-_AUTO_ORDER = ["deepseek", "openai", "groq", "anthropic", "ollama"]
+_AUTO_ORDER = ["deepseek", "openrouter", "openai", "groq", "anthropic", "ollama"]
 
 
 def chat_completion(system_prompt: str, messages: list[dict]) -> ChatResult:
@@ -62,6 +62,19 @@ def _call_provider(name: str, system_prompt: str, messages: list[dict]) -> ChatR
             model=get_config("OPENAI_MODEL") or "gpt-4o-mini",
             provider_name="openai",
         )
+    if name == "openrouter":
+        model = get_config("OPENROUTER_MODEL") or "deepseek/deepseek-chat"
+        return _openai_compat(
+            system_prompt, messages,
+            base_url="https://openrouter.ai/api/v1",
+            api_key=get_config("OPENROUTER_API_KEY"),
+            model=model,
+            provider_name="openrouter",
+            extra_headers={
+                "HTTP-Referer": "https://github.com/sebastianligueno/yatiri",
+                "X-Title": "Yatiri Academic Assistant",
+            },
+        )
     if name == "groq":
         return _openai_compat(
             system_prompt, messages,
@@ -92,6 +105,7 @@ def _openai_compat(
     model: str,
     provider_name: str,
     extra_payload: dict | None = None,
+    extra_headers: dict | None = None,
 ) -> ChatResult:
     if requests is None:
         return ChatResult(content=None, provider=provider_name, error="requests no instalado")
@@ -109,6 +123,8 @@ def _openai_compat(
     if extra_payload:
         payload.update(extra_payload)
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    if extra_headers:
+        headers.update(extra_headers)
     try:
         resp = requests.post(
             f"{base_url.rstrip('/')}/chat/completions",
@@ -186,6 +202,7 @@ def active_provider_label() -> str:
     provider = get_config("SCHOLAR_MODEL_PROVIDER") or "auto"
     keys = {
         "deepseek": bool(get_config("DEEPSEEK_API_KEY")),
+        "openrouter": bool(get_config("OPENROUTER_API_KEY")),
         "openai": bool(get_config("OPENAI_API_KEY")),
         "groq": bool(get_config("GROQ_API_KEY")),
         "anthropic": bool(get_config("ANTHROPIC_API_KEY")),

@@ -14,15 +14,16 @@ except Exception:
         print(msg)
 
 
-_PROVIDERS = ["auto", "deepseek", "openai", "groq", "anthropic", "ollama"]
+_PROVIDERS = ["auto", "deepseek", "openrouter", "openai", "groq", "anthropic", "ollama"]
 
 _PROVIDER_INFO = {
-    "auto":      "intenta en orden: DeepSeek → OpenAI → Groq → Anthropic → Ollama",
-    "deepseek":  "DeepSeek API — bajo costo, buena calidad  https://platform.deepseek.com",
-    "openai":    "OpenAI API — o cualquier API compatible (base URL configurable)",
-    "groq":      "Groq — inferencia rápida, modelos Llama  https://console.groq.com",
-    "anthropic": "Anthropic / Claude API  https://console.anthropic.com",
-    "ollama":    "Ollama local — sin internet, sin costo  https://ollama.com",
+    "auto":        "intenta en orden: DeepSeek → OpenRouter → OpenAI → Groq → Anthropic → Ollama",
+    "deepseek":    "DeepSeek API — bajo costo, buena calidad  https://platform.deepseek.com",
+    "openrouter":  "OpenRouter — acceso a 300+ modelos (Qwen, Kimi, Mistral, Llama…)  https://openrouter.ai",
+    "openai":      "OpenAI API — o cualquier API compatible (base URL configurable)",
+    "groq":        "Groq — inferencia rápida, modelos Llama  https://console.groq.com",
+    "anthropic":   "Anthropic / Claude API  https://console.anthropic.com",
+    "ollama":      "Ollama local — sin internet, sin costo  https://ollama.com",
 }
 
 
@@ -35,25 +36,27 @@ def run_setup() -> None:
     _print("\n¿Qué quieres configurar?")
     _print("  1. Proveedor LLM")
     _print("  2. DeepSeek")
-    _print("  3. OpenAI (o API compatible)")
-    _print("  4. Groq")
-    _print("  5. Anthropic / Claude")
-    _print("  6. Ollama local")
-    _print("  7. Región e idioma de búsqueda")
-    _print("  8. Borrar configuración guardada")
-    _print("  9. Salir\n")
+    _print("  3. OpenRouter  (Qwen, Kimi, Mistral, DeepSeek y 300+ modelos)")
+    _print("  4. OpenAI (o API compatible)")
+    _print("  5. Groq")
+    _print("  6. Anthropic / Claude")
+    _print("  7. Ollama local")
+    _print("  8. Región e idioma de búsqueda")
+    _print("  9. Borrar configuración guardada")
+    _print(" 10. Salir\n")
 
-    choice = _ask("Opción [1-9]", default="9").strip()
+    choice = _ask("Opción [1-10]", default="10").strip()
 
     dispatch = {
         "1": _configure_provider,
         "2": lambda: _configure_api_key("deepseek"),
-        "3": lambda: _configure_api_key("openai"),
-        "4": lambda: _configure_api_key("groq"),
-        "5": lambda: _configure_api_key("anthropic"),
-        "6": _configure_ollama,
-        "7": _configure_region,
-        "8": _clear_config,
+        "3": lambda: _configure_api_key("openrouter"),
+        "4": lambda: _configure_api_key("openai"),
+        "5": lambda: _configure_api_key("groq"),
+        "6": lambda: _configure_api_key("anthropic"),
+        "7": _configure_ollama,
+        "8": _configure_region,
+        "9": _clear_config,
     }
     fn = dispatch.get(choice)
     if fn:
@@ -106,18 +109,28 @@ def _configure_provider() -> None:
 
 def _configure_api_key(provider: str) -> None:
     key_map = {
-        "deepseek":  ("DEEPSEEK_API_KEY",  "DEEPSEEK_MODEL",  "deepseek-chat",
-                      "https://platform.deepseek.com/api_keys",
-                      ["deepseek-chat", "deepseek-reasoner"]),
-        "openai":    ("OPENAI_API_KEY",    "OPENAI_MODEL",    "gpt-4o-mini",
-                      "https://platform.openai.com/api-keys",
-                      ["gpt-4o-mini", "gpt-4o", "gpt-4.1-mini"]),
-        "groq":      ("GROQ_API_KEY",      "GROQ_MODEL",      "llama-3.1-8b-instant",
-                      "https://console.groq.com/keys",
-                      ["llama-3.1-8b-instant", "llama-3.3-70b-versatile", "mixtral-8x7b-32768"]),
-        "anthropic": ("ANTHROPIC_API_KEY", "ANTHROPIC_MODEL", "claude-haiku-4-5-20251001",
-                      "https://console.anthropic.com/settings/keys",
-                      ["claude-haiku-4-5-20251001", "claude-sonnet-4-6", "claude-opus-4-6"]),
+        "deepseek":    ("DEEPSEEK_API_KEY",    "DEEPSEEK_MODEL",    "deepseek-chat",
+                        "https://platform.deepseek.com/api_keys",
+                        ["deepseek-chat", "deepseek-reasoner"]),
+        "openrouter":  ("OPENROUTER_API_KEY",  "OPENROUTER_MODEL",  "deepseek/deepseek-chat",
+                        "https://openrouter.ai/keys",
+                        [
+                            "deepseek/deepseek-chat",
+                            "qwen/qwen-2.5-72b-instruct",
+                            "moonshotai/moonshot-v1-8k",
+                            "mistralai/mistral-7b-instruct",
+                            "meta-llama/llama-3.1-8b-instruct",
+                            "google/gemini-flash-1.5",
+                        ]),
+        "openai":      ("OPENAI_API_KEY",      "OPENAI_MODEL",      "gpt-4o-mini",
+                        "https://platform.openai.com/api-keys",
+                        ["gpt-4o-mini", "gpt-4o", "gpt-4.1-mini"]),
+        "groq":        ("GROQ_API_KEY",        "GROQ_MODEL",        "llama-3.1-8b-instant",
+                        "https://console.groq.com/keys",
+                        ["llama-3.1-8b-instant", "llama-3.3-70b-versatile", "mixtral-8x7b-32768"]),
+        "anthropic":   ("ANTHROPIC_API_KEY",   "ANTHROPIC_MODEL",   "claude-haiku-4-5-20251001",
+                        "https://console.anthropic.com/settings/keys",
+                        ["claude-haiku-4-5-20251001", "claude-sonnet-4-6", "claude-opus-4-6"]),
     }
     key_cfg, model_cfg, default_model, key_url, models = key_map[provider]
 

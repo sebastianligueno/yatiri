@@ -7,6 +7,7 @@ from rich.console import Console
 from rich.panel import Panel
 
 from research_operator.core.advisor import answer_session_query, review_project_brief
+from research_operator.core.export_md import export_results_to_md
 from research_operator.core.academic_stack import render_stack_report
 from research_operator.core.llm import active_provider_label, provider_diagnostics
 from research_operator.core.mcp_detect import render_mcp_report
@@ -113,6 +114,9 @@ def handle_slash_command(state: SessionState, raw: str) -> bool:
         else:
             console.print(f"Modo activo: {state.mode}")
         return False
+    if command == "/export":
+        _run_export(state, args)
+        return False
     if command == "/brief":
         run_brief_form(state)
         return False
@@ -161,6 +165,20 @@ def handle_slash_command(state: SessionState, raw: str) -> bool:
         return False
     console.print(f"Comando no reconocido: {command}. Usa /help.")
     return False
+
+
+def _run_export(state: SessionState, args: list[str]) -> None:
+    if not state.last_search_results:
+        console.print("No hay resultados de búsqueda en la sesión. Usa /search primero.")
+        return
+    output_dir = Path(args[0]).expanduser() if args else Path.cwd() / "bibliografía"
+    created = export_results_to_md(state.last_search_results, output_dir)
+    if created:
+        console.print(f"[green]{len(created)} fichas exportadas en:[/green] {output_dir}")
+        for p in created:
+            console.print(f"  {p.name}")
+    else:
+        console.print("No se pudo exportar ningún resultado.")
 
 
 def run_brief_form(state: SessionState) -> None:
@@ -242,6 +260,7 @@ def render_help() -> str:
         "\n[bold]Proyecto:[/bold]\n"
         "  /brief                completar ficha de proyecto (paradigma, pregunta, objetivos…)\n"
         "  /review               revisión crítica del proyecto como evaluador externo\n"
+        "  /export [ruta]        exportar resultados de búsqueda como fichas .md (Obsidian/Zettlr)\n"
         "  /attach <ruta>        adjuntar carpeta de proyecto como contexto\n"
         "  /detach               quitar contexto adjunto\n"
         "\n[bold]Sesión:[/bold]\n"

@@ -59,6 +59,7 @@ class SessionState:
     pinned_memories: list[str] = field(default_factory=list)
     messages: list[dict] = field(default_factory=list)
     brief: ProjectBrief = field(default_factory=ProjectBrief)
+    last_search_results: list = field(default_factory=list)
 
     def pin_memory(self, slug: str) -> None:
         if slug not in self.pinned_memories:

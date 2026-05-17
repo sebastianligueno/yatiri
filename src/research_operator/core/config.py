@@ -15,6 +15,9 @@ _ENV_ALIASES: dict[str, str] = {
     "DEEPSEEK_MODEL": "DEEPSEEK_MODEL",
     "DEEPSEEK_BASE_URL": "DEEPSEEK_BASE_URL",
     "DEEPSEEK_THINKING_MODE": "DEEPSEEK_THINKING_MODE",
+    # OpenRouter (acceso a cientos de modelos: Qwen, Kimi, Mistral, DeepSeek, etc.)
+    "OPENROUTER_API_KEY": "OPENROUTER_API_KEY",
+    "OPENROUTER_MODEL": "OPENROUTER_MODEL",
     # OpenAI (o cualquier API compatible)
     "OPENAI_API_KEY": "OPENAI_API_KEY",
     "OPENAI_MODEL": "OPENAI_MODEL",
@@ -141,6 +144,8 @@ def config_summary() -> dict:
         "provider": get_config("SCHOLAR_MODEL_PROVIDER") or "auto",
         "deepseek_key": _mask(get_config("DEEPSEEK_API_KEY")),
         "deepseek_model": get_config("DEEPSEEK_MODEL") or "deepseek-chat",
+        "openrouter_key": _mask(get_config("OPENROUTER_API_KEY")),
+        "openrouter_model": get_config("OPENROUTER_MODEL") or "deepseek/deepseek-chat",
         "openai_key": _mask(get_config("OPENAI_API_KEY")),
         "openai_model": get_config("OPENAI_MODEL") or "gpt-4o-mini",
         "groq_key": _mask(get_config("GROQ_API_KEY")),

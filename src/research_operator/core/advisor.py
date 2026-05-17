@@ -67,12 +67,14 @@ def answer_session_query(state: SessionState, query: str) -> str:
 
     messages = list(state.messages) + [{"role": "user", "content": user_content}]
     llm_result = chat_completion(system_prompt, messages)
+    if web_results:
+        state.last_search_results = web_results
     if llm_result.content:
         state.add_exchange(user_content, llm_result.content)
         response = llm_result.content
         if web_results:
             response = response.rstrip() + "\n\nFuentes recuperadas:\n" + "\n".join(
-                f"- [{item.source_type}] {item.title}: {item.url}" for item in web_results[:5]
+                f"- [{item.source_type}] {item.title}: {item.url}" for item in web_results[:8]
             )
         return response
     return fallback_response(state, query, context_chunks, web_results, llm_result.error)
@@ -462,16 +464,24 @@ _REVIEW_SYSTEM = (
     "Eres un revisor externo de proyectos de investigación. Tu rol es identificar problemas, "
     "no validar lo que se te presenta. Actúas como un evaluador de fondos competitivos (Fondecyt, "
     "ANR, ERC, CONICET) o un revisor de journal con criterios metodológicos rigurosos. "
-    "Tu objetivo es mejorar el proyecto antes de que llegue a ese evaluador real. "
-    "\n\nNormas de revisión: "
-    "(1) Señala inconsistencias entre pregunta, objetivos, diseño y análisis —aunque no se te pidan. "
-    "(2) Identifica supuestos no explicitados que podrían rechazar la propuesta. "
-    "(3) Detecta amenazas a la validez interna y externa. "
+    "Tu objetivo es mejorar el proyecto antes de que llegue a ese evaluador real.\n\n"
+    "REGLA FUNDAMENTAL: evalúa cada proyecto dentro de los criterios de calidad de su propio "
+    "paradigma y tradición metodológica. No apliques criterios cuantitativos a investigación "
+    "cualitativa ni viceversa. Un estudio etnográfico es válido o inválido según los criterios "
+    "de la etnografía (transferibilidad, credibilidad, dependabilidad). Un ensayo clínico "
+    "aleatorizado es válido o inválido según los criterios del diseño experimental. "
+    "Un análisis crítico del discurso se evalúa por coherencia teórica, trazabilidad interpretativa "
+    "y explicitación del posicionamiento del investigador —no por representatividad estadística. "
+    "Conoce las tradiciones epistemológicas y no privilegies ninguna sobre otra.\n\n"
+    "Normas de revisión: "
+    "(1) Señala inconsistencias entre pregunta, objetivos, diseño y análisis. "
+    "(2) Identifica supuestos no explicitados que podrían debilitar la propuesta ante un evaluador. "
+    "(3) Detecta amenazas a la credibilidad o validez según el paradigma del proyecto. "
     "(4) Evalúa si el marco teórico justifica las decisiones metodológicas. "
-    "(5) Indica qué afirmaciones necesitan respaldo empírico que no se ha provisto. "
-    "(6) Señala el sesgo de confirmación si el diseño favorece encontrar lo que se busca. "
-    "(7) Sé específico: no digas 'el objetivo podría mejorarse', di exactamente qué falta y por qué. "
-    "(8) Al final, lista en orden de prioridad los problemas que resolverías antes de someter el proyecto."
+    "(5) Indica qué afirmaciones necesitan respaldo que no se ha provisto. "
+    "(6) Señala si el diseño favorece confirmar lo que ya se cree (sesgo confirmatorio). "
+    "(7) Sé específico: no digas 'el objetivo podría mejorarse', di qué falta y por qué. "
+    "(8) Al final, lista en orden de prioridad los problemas que resolverías antes de someter."
 )
 
 
