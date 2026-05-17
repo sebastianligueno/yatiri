@@ -7,7 +7,11 @@ from rich.console import Console
 from rich.panel import Panel
 
 from research_operator.core.advisor import answer_session_query, review_project_brief
+from research_operator.core.bibtex_search import find_in_library, search_local_library
+from research_operator.core.config import get_config
 from research_operator.core.export_md import export_results_to_md
+from research_operator.core.llm import estimate_cost
+from research_operator.core.vault_export import export_to_vault, get_vault_folders
 from research_operator.core.academic_stack import render_stack_report
 from research_operator.core.llm import active_provider_label, provider_diagnostics
 from research_operator.core.mcp_detect import render_mcp_report
@@ -52,6 +56,8 @@ def start_repl() -> None:
             user_input = read_input(session, state)
         except (EOFError, KeyboardInterrupt):
             console.print("\nSesión terminada.")
+            if state.total_input_tokens > 0:
+                console.print(_render_cost(state))
             break
 
         if not user_input:
@@ -63,7 +69,10 @@ def start_repl() -> None:
                 break
             continue
 
-        console.print(answer_session_query(state, user_input))
+        response = answer_session_query(state, user_input)
+        console.print(response)
+        if state.mode == "search" and state.last_search_results:
+            _show_library_matches(state)
 
 
 def build_prompt_session():
@@ -125,6 +134,9 @@ def handle_slash_command(state: SessionState, raw: str) -> bool:
     if command == "/export":
         _run_export(state, args)
         return False
+    if command == "/cost":
+        console.print(_render_cost(state))
+        return False
     if command == "/brief":
         run_brief_form(state)
         return False
@@ -179,7 +191,29 @@ def _run_export(state: SessionState, args: list[str]) -> None:
     if not state.last_search_results:
         console.print("No hay resultados de búsqueda en la sesión. Usa /search primero.")
         return
-    output_dir = Path(args[0]).expanduser() if args else Path.cwd() / "bibliografía"
+
+    vault_path_str = get_config("YATIRI_VAULT_PATH")
+
+    # Si hay --vault o vault configurado, exportar con clasificación temática
+    use_vault = "--vault" in args or (vault_path_str and "--local" not in args)
+
+    if use_vault and vault_path_str:
+        vault_path = Path(vault_path_str).expanduser()
+        folders = get_vault_folders(vault_path)
+        if folders:
+            console.print(f"Exportando al vault: [cyan]{vault_path}[/cyan]")
+            summary = export_to_vault(state.last_search_results, vault_path)
+            total = sum(len(v) for v in summary.values())
+            console.print(f"[green]{total} fichas exportadas:[/green]")
+            for folder_name, files in summary.items():
+                console.print(f"  {folder_name}/  ({len(files)} fichas)")
+                for p in files:
+                    console.print(f"    {p.name}")
+            return
+
+    # Sin vault: exportar a carpeta especificada o cwd/bibliografía
+    output_dir = Path(args[0]).expanduser() if args and not args[0].startswith("--") \
+        else Path.cwd() / "bibliografía"
     created = export_results_to_md(state.last_search_results, output_dir)
     if created:
         console.print(f"[green]{len(created)} fichas exportadas en:[/green] {output_dir}")
@@ -187,6 +221,59 @@ def _run_export(state: SessionState, args: list[str]) -> None:
             console.print(f"  {p.name}")
     else:
         console.print("No se pudo exportar ningún resultado.")
+
+
+def _show_library_matches(state: SessionState) -> None:
+    """Cruza los últimos resultados de búsqueda con la biblioteca BibTeX local."""
+    bib_path_str = get_config("YATIRI_BIBTEX_PATH")
+    if not bib_path_str:
+        return
+    bib_path = Path(bib_path_str).expanduser()
+    if not bib_path.exists():
+        return
+
+    found_in_lib = []
+    not_in_lib = []
+    for result in state.last_search_results:
+        doi = getattr(result, "url", "")
+        doi = doi.replace("https://doi.org/", "").strip() if "doi.org" in doi else ""
+        title = getattr(result, "title", "")
+        match = find_in_library(doi, title, bib_path)
+        if match:
+            found_in_lib.append((result, match))
+        else:
+            not_in_lib.append(result)
+
+    if not found_in_lib and not not_in_lib:
+        return
+
+    lines = ["\n[dim]── Cruce con biblioteca local ──[/dim]"]
+    if found_in_lib:
+        lines.append(f"[green]En tu biblioteca ({len(found_in_lib)}):[/green]")
+        for result, entry in found_in_lib:
+            lines.append(f"  ✓ {entry.key}  {getattr(result, 'title', '')[:60]}")
+    if not_in_lib:
+        lines.append(f"[yellow]No encontrados ({len(not_in_lib)}):[/yellow]")
+        for result in not_in_lib[:5]:
+            lines.append(f"  – {getattr(result, 'title', '')[:65]}")
+    console.print("\n".join(lines))
+
+
+def _render_cost(state: SessionState) -> str:
+    if state.total_input_tokens == 0 and state.total_output_tokens == 0:
+        return "Sin uso registrado en esta sesión."
+    provider = state.last_provider or "desconocido"
+    cost = estimate_cost(provider, state.total_input_tokens, state.total_output_tokens)
+    lines = [
+        f"Proveedor: {provider}",
+        f"Tokens entrada:  {state.total_input_tokens:,}",
+        f"Tokens salida:   {state.total_output_tokens:,}",
+        f"Total tokens:    {state.total_input_tokens + state.total_output_tokens:,}",
+        f"Costo estimado:  ${cost:.4f} USD",
+    ]
+    if cost < 0.001:
+        lines.append("(precio referencial — puede variar según modelo exacto)")
+    return "\n".join(lines)
 
 
 def run_brief_form(state: SessionState) -> None:
@@ -268,7 +355,8 @@ def render_help() -> str:
         "\n[bold]Proyecto:[/bold]\n"
         "  /brief                completar ficha de proyecto (paradigma, pregunta, objetivos…)\n"
         "  /review               revisión crítica del proyecto como evaluador externo\n"
-        "  /export [ruta]        exportar resultados de búsqueda como fichas .md (Obsidian/Zettlr)\n"
+        "  /export [ruta]        exportar como fichas .md — a vault Obsidian si está configurado\n"
+        "  /export --local [ruta] exportar a carpeta local (ignora vault configurado)\n"
         "  /attach <ruta>        adjuntar carpeta de proyecto como contexto\n"
         "  /detach               quitar contexto adjunto\n"
         "\n[bold]Sesión:[/bold]\n"
@@ -278,10 +366,11 @@ def render_help() -> str:
         "  /memory show          ver memorias disponibles\n"
         "  /memory pin <nombre>  fijar memoria en el contexto\n"
         "\n[bold]Sistema:[/bold]\n"
+        "  /cost                 tokens y costo estimado de la sesión\n"
         "  /provider             ver proveedor activo\n"
         "  /doctor               diagnóstico completo de proveedores\n"
         "  /mcp                  ver MCPs detectados\n"
-        "  /exit                 salir\n"
+        "  /exit                 salir (muestra costo si hay uso)\n"
     )
 
 

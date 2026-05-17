@@ -42,10 +42,11 @@ def run_setup() -> None:
     _print("  6. Anthropic / Claude")
     _print("  7. Ollama local")
     _print("  8. Región e idioma de búsqueda")
-    _print("  9. Borrar configuración guardada")
-    _print(" 10. Salir\n")
+    _print("  9. Vault de Obsidian y biblioteca BibTeX")
+    _print(" 10. Borrar configuración guardada")
+    _print(" 11. Salir\n")
 
-    choice = _ask("Opción [1-10]", default="10").strip()
+    choice = _ask("Opción [1-11]", default="11").strip()
 
     dispatch = {
         "1": _configure_provider,
@@ -56,7 +57,8 @@ def run_setup() -> None:
         "6": lambda: _configure_api_key("anthropic"),
         "7": _configure_ollama,
         "8": _configure_region,
-        "9": _clear_config,
+        "9": _configure_local,
+        "10": _clear_config,
     }
     fn = dispatch.get(choice)
     if fn:
@@ -196,6 +198,41 @@ def _configure_region() -> None:
         return
     save_config("AMAUTA_REGION", region)
     _print(f"Región guardada: {REGIONS[region]['label']}")
+
+
+def _configure_local() -> None:
+    _print("\n[bold]Integración local[/bold]")
+    _print("Configura tu vault de Obsidian y biblioteca BibTeX para que Yatiri")
+    _print("exporte fichas directamente y cruce resultados con lo que ya tienes.\n")
+
+    current_vault = get_config("YATIRI_VAULT_PATH")
+    _print(f"Vault actual: {current_vault or '(no configurado)'}")
+    vault = _ask("Ruta del vault de Obsidian (Enter para no cambiar)", default=current_vault).strip()
+    if vault:
+        from pathlib import Path
+        vault_path = Path(vault).expanduser()
+        if vault_path.exists():
+            save_config("YATIRI_VAULT_PATH", str(vault_path))
+            _print(f"Vault guardado: {vault_path}")
+            # Mostrar carpetas detectadas
+            folders = [d.name for d in vault_path.iterdir() if d.is_dir() and not d.name.startswith(".")]
+            if folders:
+                _print(f"Carpetas detectadas: {', '.join(sorted(folders)[:8])}")
+        else:
+            _print(f"Ruta no encontrada: {vault_path}")
+
+    current_bib = get_config("YATIRI_BIBTEX_PATH")
+    _print(f"\nBibTeX actual: {current_bib or '(no configurado)'}")
+    bib = _ask("Ruta del archivo .bib (Enter para no cambiar)", default=current_bib).strip()
+    if bib:
+        from pathlib import Path
+        bib_path = Path(bib).expanduser()
+        if bib_path.exists():
+            save_config("YATIRI_BIBTEX_PATH", str(bib_path))
+            size_mb = bib_path.stat().st_size / 1_000_000
+            _print(f"BibTeX guardado: {bib_path} ({size_mb:.1f} MB)")
+        else:
+            _print(f"Archivo no encontrado: {bib_path}")
 
 
 def _clear_config() -> None:

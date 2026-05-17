@@ -60,6 +60,15 @@ class SessionState:
     messages: list[dict] = field(default_factory=list)
     brief: ProjectBrief = field(default_factory=ProjectBrief)
     last_search_results: list = field(default_factory=list)
+    total_input_tokens: int = 0
+    total_output_tokens: int = 0
+    last_provider: str = ""
+
+    def record_usage(self, provider: str, input_tokens: int, output_tokens: int) -> None:
+        self.total_input_tokens += input_tokens
+        self.total_output_tokens += output_tokens
+        if provider:
+            self.last_provider = provider
 
     def pin_memory(self, slug: str) -> None:
         if slug not in self.pinned_memories:

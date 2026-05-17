@@ -36,6 +36,9 @@ _ENV_ALIASES: dict[str, str] = {
     # Región
     "AMAUTA_REGION": "AMAUTA_REGION",
     "AMAUTA_LANGUAGES": "AMAUTA_LANGUAGES",
+    # Integración local
+    "YATIRI_VAULT_PATH": "YATIRI_VAULT_PATH",    # ruta del vault Obsidian
+    "YATIRI_BIBTEX_PATH": "YATIRI_BIBTEX_PATH",  # ruta del .bib local
 }
 
 # Perfiles de región predefinidos

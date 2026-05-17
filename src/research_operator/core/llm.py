@@ -16,6 +16,24 @@ class ChatResult:
     content: str | None
     provider: str
     error: str | None = None
+    input_tokens: int = 0
+    output_tokens: int = 0
+
+
+# Precios aproximados por millón de tokens (USD) — input / output
+_PRICING: dict[str, tuple[float, float]] = {
+    "deepseek":    (0.27, 1.10),
+    "openrouter":  (0.27, 1.10),   # varía por modelo; default deepseek
+    "openai":      (0.15, 0.60),   # gpt-4o-mini
+    "groq":        (0.05, 0.08),   # llama-3.1-8b-instant
+    "anthropic":   (0.80, 4.00),   # claude-haiku
+    "ollama":      (0.00, 0.00),
+}
+
+
+def estimate_cost(provider: str, input_tokens: int, output_tokens: int) -> float:
+    inp_price, out_price = _PRICING.get(provider, (0.0, 0.0))
+    return (input_tokens * inp_price + output_tokens * out_price) / 1_000_000
 
 
 # Orden de intento para modo "auto": primero el que tenga clave
@@ -131,12 +149,16 @@ def _openai_compat(
             json=payload, headers=headers, timeout=60,
         )
         resp.raise_for_status()
-        choices = resp.json().get("choices", [])
+        data = resp.json()
+        choices = data.get("choices", [])
         if not choices:
             return ChatResult(content=None, provider=provider_name, error="respuesta vacía")
+        usage = data.get("usage", {})
         return ChatResult(
             content=choices[0].get("message", {}).get("content"),
             provider=provider_name,
+            input_tokens=usage.get("prompt_tokens", 0),
+            output_tokens=usage.get("completion_tokens", 0),
         )
     except Exception as exc:
         return ChatResult(content=None, provider=provider_name, error=str(exc))
@@ -169,9 +191,15 @@ def _anthropic_chat(system_prompt: str, messages: list[dict]) -> ChatResult:
             json=payload, headers=headers, timeout=60,
         )
         resp.raise_for_status()
-        content_blocks = resp.json().get("content", [])
+        data = resp.json()
+        content_blocks = data.get("content", [])
         text = " ".join(b.get("text", "") for b in content_blocks if b.get("type") == "text")
-        return ChatResult(content=text or None, provider="anthropic")
+        usage = data.get("usage", {})
+        return ChatResult(
+            content=text or None, provider="anthropic",
+            input_tokens=usage.get("input_tokens", 0),
+            output_tokens=usage.get("output_tokens", 0),
+        )
     except Exception as exc:
         return ChatResult(content=None, provider="anthropic", error=str(exc))
 

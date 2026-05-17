@@ -69,6 +69,7 @@ def answer_session_query(state: SessionState, query: str) -> str:
     llm_result = chat_completion(system_prompt, messages)
     if web_results:
         state.last_search_results = web_results
+    state.record_usage(llm_result.provider, llm_result.input_tokens, llm_result.output_tokens)
     if llm_result.content:
         state.add_exchange(user_content, llm_result.content)
         response = llm_result.content
@@ -503,6 +504,7 @@ def review_project_brief(state: SessionState) -> str:
     )
     messages = [{"role": "user", "content": user_content}]
     result = chat_completion(system_prompt, messages)
+    state.record_usage(result.provider, result.input_tokens, result.output_tokens)
     if result.content:
         state.add_exchange(user_content, result.content)
         return result.content
