@@ -10,11 +10,13 @@ from research_operator.core.memory import load_memory_text
 from research_operator.core.openalex import search_openalex
 from research_operator.core.profiles import infer_profile
 from research_operator.core.project import research_dir
+from research_operator.core.hal import search_hal
+from research_operator.core.jstage import search_jstage
 from research_operator.core.pubmed import search_pubmed
 from research_operator.core.registry import read_jsonl_records
 from research_operator.core.scielo import search_scielo
 from research_operator.core.semantic_scholar import search_semantic_scholar
-from research_operator.core.session import SessionState
+from research_operator.core.session import ProjectBrief, SessionState
 from research_operator.core.web_search import search_web
 
 
@@ -107,6 +109,9 @@ def gather_web_results(state: SessionState, query: str):
     # PubMed: prioritario en regiones globales o cuando hay términos clínicos
     if region.get("languages") and "en" in region["languages"] or _is_health_query(query):
         results += search_pubmed(query, max_results=2)
+    # Fuentes europeas y asiáticas
+    results += search_hal(query, max_results=2)
+    results += search_jstage(query, max_results=2)
     # Web general
     results += search_web(query, max_results=3)
     return results
@@ -449,3 +454,46 @@ def snippet_from_text(text: str, query: str) -> str:
 
 def tokenize(text: str) -> list[str]:
     return re.findall(r"[a-zA-ZáéíóúñÁÉÍÓÚÑ]{4,}", text.lower())
+
+
+# ── Revisión crítica de proyecto ──────────────────────────────────────────────
+
+_REVIEW_SYSTEM = (
+    "Eres un revisor externo de proyectos de investigación. Tu rol es identificar problemas, "
+    "no validar lo que se te presenta. Actúas como un evaluador de fondos competitivos (Fondecyt, "
+    "ANR, ERC, CONICET) o un revisor de journal con criterios metodológicos rigurosos. "
+    "Tu objetivo es mejorar el proyecto antes de que llegue a ese evaluador real. "
+    "\n\nNormas de revisión: "
+    "(1) Señala inconsistencias entre pregunta, objetivos, diseño y análisis —aunque no se te pidan. "
+    "(2) Identifica supuestos no explicitados que podrían rechazar la propuesta. "
+    "(3) Detecta amenazas a la validez interna y externa. "
+    "(4) Evalúa si el marco teórico justifica las decisiones metodológicas. "
+    "(5) Indica qué afirmaciones necesitan respaldo empírico que no se ha provisto. "
+    "(6) Señala el sesgo de confirmación si el diseño favorece encontrar lo que se busca. "
+    "(7) Sé específico: no digas 'el objetivo podría mejorarse', di exactamente qué falta y por qué. "
+    "(8) Al final, lista en orden de prioridad los problemas que resolverías antes de someter el proyecto."
+)
+
+
+def review_project_brief(state: SessionState) -> str:
+    brief = state.brief
+    if brief.is_empty():
+        return (
+            "No hay ficha de proyecto cargada en esta sesión.\n"
+            "Usa /brief para completar la ficha antes de solicitar revisión."
+        )
+    system_prompt = _REVIEW_SYSTEM
+    region = get_region()
+    system_prompt += f" {region['context']}"
+
+    user_content = (
+        f"{brief.to_text()}\n\n"
+        "Realiza una revisión crítica y completa de esta propuesta de investigación. "
+        "No la valides: encuentra los problemas reales que tendría ante un evaluador externo riguroso."
+    )
+    messages = [{"role": "user", "content": user_content}]
+    result = chat_completion(system_prompt, messages)
+    if result.content:
+        state.add_exchange(user_content, result.content)
+        return result.content
+    return f"No se pudo obtener revisión.\n{summarize_model_issue(result.error or '')}"

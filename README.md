@@ -24,24 +24,25 @@ Si te sirve para tu propio trabajo, úsala. Si la mejoras, comparte bajo la mism
 
 Sesión interactiva en el terminal con la que puedes:
 
-- Consultar con contexto iberoamericano por defecto
-- Buscar en **SciELO** y **OpenAlex** y recibir síntesis fundamentada en las fuentes recuperadas
-- Trabajar en modos especializados: búsqueda, diseño de investigación, metodología, docencia, redacción y revisión crítica
-- Ver qué MCPs de investigación tienes instalados en Claude Code y cómo usarlos. Esto, para que la búsqueda esté integrada
+- Consultar con contexto iberoamericano por defecto (configurable)
+- Buscar en múltiples fuentes académicas internacionales y recibir síntesis fundamentada
+- Trabajar en modos especializados: búsqueda, diseño, metodología, docencia, redacción y revisión crítica
+- Construir una **ficha de proyecto** con `/brief` y recibir revisión crítica con `/review`
+- Ver qué MCPs de investigación tienes instalados en Claude Code y cómo usarlos
 - Mantener historial de conversación dentro de la sesión
-- Crear un espacio de trabajo estructurado para cada proyecto
+- Crear un workspace estructurado para cada proyecto con `yatiri init`
 
-Funciona con **DeepSeek API** (muy bajo costo), u otra api. También se puede usar **Ollama** local (sin internet, sin costo).
+Funciona con **DeepSeek**, **OpenAI**, **Groq**, **Anthropic** o **Ollama** local —el que tengas disponible.
 
 ---
 
 ## Instalación
 
-### Requisitos previos
+### Requisitos
 
 - Python 3.10 o superior
-- Una [API key de DeepSeek](https://platform.deepseek.com/api_keys) **o** [Ollama](https://ollama.com) instalado localmente
 - Git
+- Al menos una de: [DeepSeek API key](https://platform.deepseek.com/api_keys) · [OpenAI API key](https://platform.openai.com) · [Groq API key](https://console.groq.com) · [Anthropic API key](https://console.anthropic.com) · [Ollama](https://ollama.com) local
 
 ### Pasos
 
@@ -49,29 +50,26 @@ Funciona con **DeepSeek API** (muy bajo costo), u otra api. También se puede us
 git clone https://github.com/sebastianligueno/yatiri
 cd yatiri
 pip install -e .
-yatiri setup    # configura API key y región
+yatiri setup    # configura proveedor y región
 yatiri          # abre la sesión interactiva
 ```
 
-Con pipx (entorno aislado, recomendado):
+Con pipx (entorno aislado):
 
 ```bash
 pipx install git+https://github.com/sebastianligueno/yatiri
 yatiri setup
 ```
 
-Ver [INSTALL.md](INSTALL.md) para instrucciones detalladas en Windows, macOS y Linux.
-
-### Configurar la API key manualmente
+### Configuración rápida de clave
 
 ```bash
-# DeepSeek (recomendado, por el costo)
-export DEEPSEEK_API_KEY="tu-clave"
-
-# O guárdarla permanente:
+# Cualquier proveedor, guárdalo permanente:
 echo "tu-clave" > ~/.deepseek_key
 echo 'export DEEPSEEK_API_KEY=$(cat ~/.deepseek_key)' >> ~/.bashrc
 ```
+
+Ver [INSTALL.md](INSTALL.md) para instrucciones detalladas en Windows, macOS y Linux.
 
 ---
 
@@ -92,9 +90,13 @@ Dentro de la sesión:
 /teach  Clase de 90 min sobre muestreo probabilístico
 /write  Estructura para introducción de artículo empírico
 /verify ¿Las afirmaciones del manuscrito tienen respaldo en los datos?
-/mcp    Ver MCPs detectados y sugerencias de instalación
-/doctor Diagnóstico de proveedores activos
-/clear  Limpiar historial de la sesión
+
+/brief  → completar ficha de proyecto (paradigma, pregunta, marco teórico, método…)
+/review → revisión crítica del proyecto como evaluador externo
+
+/mcp    ver MCPs detectados y sugerencias de instalación
+/doctor diagnóstico de proveedores activos
+/clear  limpiar historial de la sesión
 ```
 
 ---
@@ -110,17 +112,39 @@ Dentro de la sesión:
 | `design` | Diseño de investigación, coherencia metodológica |
 | `teach` | Planificación docente, secuencias, evaluación |
 | `write` | Redacción académica, estructura argumental |
-| `verify` | Revisión crítica, saltos inferenciales, trazabilidad |
+| `verify` | Revisión crítica de argumentos y trazabilidad |
 
 ---
 
 ## Fuentes de búsqueda
 
-| Fuente | Qué cubre |
-|--------|-----------|
-| SciELO | Iberoamérica, artículos revisados por pares |
-| OpenAlex | 250M+ trabajos globales, open access |
-| Web (DuckDuckGo) | Institucional, normativa, prensa académica |
+Todas las fuentes son gratuitas y de acceso abierto. No requieren clave.
+
+| Fuente | Región | Qué cubre |
+|--------|--------|-----------|
+| SciELO | Iberoamérica | Revistas peer-reviewed en español y portugués |
+| OpenAlex | Global | 250M+ works, open access, multidisciplinar |
+| Semantic Scholar | Global | 200M+ papers, grafos de citación, IA |
+| PubMed / NCBI | Global | Biomedicina, psicología clínica, salud mental |
+| HAL | Europa / Francófonos | Ciencias sociales, humanidades, educación |
+| J-STAGE | Japón / Asia | Todas las disciplinas, colaboraciones asiáticas |
+| DuckDuckGo | Web | Institucional, normativa, prensa académica |
+
+> **Sobre África:** AJOL (African Journals Online) no tiene API pública. AfricArXiv está parcialmente indexado en OpenAlex. Es una deuda pendiente del proyecto.
+
+---
+
+## Proveedores LLM
+
+`yatiri setup` configura el proveedor. En modo `auto`, prueba en orden según las claves disponibles.
+
+| Proveedor | Clave | Modelo por defecto | Nota |
+|-----------|-------|--------------------|------|
+| DeepSeek | `DEEPSEEK_API_KEY` | deepseek-chat | Bajo costo, recomendado |
+| OpenAI | `OPENAI_API_KEY` | gpt-4o-mini | URL base configurable (Azure, etc.) |
+| Groq | `GROQ_API_KEY` | llama-3.1-8b-instant | Rápido, capa gratuita disponible |
+| Anthropic | `ANTHROPIC_API_KEY` | claude-haiku-4-5 | Claude API directa |
+| Ollama | sin clave | phi4-mini:3.8b | Local, sin internet, sin costo |
 
 ---
 
@@ -138,11 +162,27 @@ Por defecto, `latam` —América Latina en español y portugués. Se puede cambi
 
 ---
 
+## Ficha de proyecto y revisión crítica
+
+`/brief` abre un formulario interactivo que guarda en la sesión:
+
+- Paradigma (cuantitativo / cualitativo / mixto)
+- Fenómeno o problema de investigación
+- Pregunta o hipótesis principal
+- Objetivo general y objetivos específicos
+- Marco teórico
+- Metodología y plan de análisis
+- Participantes / corpus / muestra
+
+`/review` toma esa ficha y la evalúa como lo haría un evaluador externo: busca inconsistencias internas, amenazas a la validez, supuestos no explicitados y sesgos en el diseño. No valida —critica. El objetivo es que el proyecto llegue más sólido a un evaluador real.
+
+---
+
 ## MCPs de investigación
 
-Yatiri detecta qué herramientas MCP tienes instaladas en Claude Code, Codex u otros agentes vía terminal (Zotero, Scite, Semantic Scholar, OpenAlex, PubMed, etc.) y las muestra con el comando `/mcp`.
+Yatiri detecta qué herramientas MCP tienes instaladas en Claude Code (Zotero, Scite, Semantic Scholar, OpenAlex, PubMed, etc.) y las muestra con `/mcp`.
 
-**Limitación importante:** Yatiri no puede *llamar* directamente a esos MCPs —eso solo lo puede hacer el asistente que tiene acceso al protocolo MCP. Lo que hace es inventariarte lo disponible y sugerirte cómo usarlo desde Claude Code u otra plataforma para búsquedas más avanzadas.
+**Limitación:** Yatiri no puede llamar directamente a esos MCPs —eso requiere Claude Code como intermediario. Lo que hace es inventariarte lo disponible y sugerirte cómo usarlo desde Claude Code para búsquedas más avanzadas. Las APIs que esos MCPs usan (Semantic Scholar, PubMed, OpenAlex) están integradas directamente en Yatiri.
 
 ---
 
@@ -150,13 +190,13 @@ Yatiri detecta qué herramientas MCP tienes instaladas en Claude Code, Codex u o
 
 El LLM está instruido para:
 
-- Distinguir explícitamente entre fuentes recuperadas en la sesión y conocimiento de entrenamiento
+- Distinguir entre fuentes recuperadas en la sesión y conocimiento de entrenamiento
 - No citar autores, años ni DOIs que no haya recuperado
 - Presentar evidencia contraria o matices que cuestionen la dirección de la consulta
-- Calibrar la certeza del lenguaje según lo que los datos permiten
-- Indicar cuándo la evidencia es insuficiente en lugar de rellenar con afirmaciones plausibles
+- Calibrar el lenguaje según lo que los datos permiten
+- Indicar cuándo la evidencia es insuficiente
 
-Esto reduce alucinaciones bibliográficas y sesgo confirmatorio, pero no los elimina. Por eso, siempre se debe verificar las referencias antes de usarlas, pero entiendo que esto es propio de cualquier trabajo de investigación
+Esto reduce alucinaciones bibliográficas y sesgo confirmatorio, pero no los elimina. Verifica siempre las referencias antes de usarlas.
 
 ---
 
