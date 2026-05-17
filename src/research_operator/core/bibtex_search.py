@@ -96,19 +96,24 @@ def _parse_bib(text: str) -> list[BibEntry]:
         if entry_type in {"comment", "string", "preamble"}:
             continue
         body = body.strip()
-        # Detectar clave de cita en primera línea (ej. "authorYEARword,")
-        first_line = body.split("\n")[0].strip().rstrip(",")
-        if first_line and "=" not in first_line and not first_line.startswith("{"):
-            key = first_line
-            body = body[len(first_line):].lstrip(",\n ")
-        else:
-            key = ""
+        # Detectar clave de cita en la primera línea no vacía (ej. "authorYEARword,")
+        # Algunos exportadores ponen la clave en la segunda línea tras un salto después de {
+        key = ""
+        for _line in body.split("\n"):
+            candidate = _line.strip().rstrip(",")
+            if not candidate:
+                continue
+            if "=" not in candidate and not candidate.startswith("{"):
+                key = candidate
+                body = body[body.find(_line) + len(_line):].lstrip(",\n ")
+            break
         fields = _extract_fields(body)
         title = _clean(fields.get("title", ""))
         if not title:
             continue
         if not key:
-            author_last = re.split(r"[,\s]", fields.get("author", "noauthor"))[0].lower()
+            raw_author = _clean(fields.get("author", "noauthor"))
+            author_last = re.sub(r"[{}]", "", re.split(r"[,\s]", raw_author)[0]).lower()
             year = fields.get("year", "")
             title_word = re.findall(r"[a-zA-Z]{4,}", title.lower())
             key = f"{author_last}{year}{title_word[0] if title_word else 'notitle'}"
