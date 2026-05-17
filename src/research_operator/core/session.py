@@ -60,6 +60,7 @@ class SessionState:
     messages: list[dict] = field(default_factory=list)
     brief: ProjectBrief = field(default_factory=ProjectBrief)
     last_search_results: list = field(default_factory=list)
+    last_search_query: str = ""
     total_input_tokens: int = 0
     total_output_tokens: int = 0
     last_provider: str = ""

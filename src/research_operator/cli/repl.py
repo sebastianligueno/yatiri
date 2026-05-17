@@ -72,7 +72,7 @@ def start_repl() -> None:
         response = answer_session_query(state, user_input)
         console.print(response)
         if state.mode == "search" and state.last_search_results:
-            _show_library_matches(state)
+            _show_library_matches(state, query=state.last_search_query)
 
 
 def build_prompt_session():
@@ -128,6 +128,8 @@ def handle_slash_command(state: SessionState, raw: str) -> bool:
         query = " ".join(args)
         if query:
             console.print(answer_session_query(state, query))
+            if command == "/search" and state.last_search_results:
+                _show_library_matches(state, query=state.last_search_query)
         else:
             console.print(f"Modo activo: {state.mode}")
         return False
@@ -223,8 +225,8 @@ def _run_export(state: SessionState, args: list[str]) -> None:
         console.print("No se pudo exportar ningún resultado.")
 
 
-def _show_library_matches(state: SessionState) -> None:
-    """Cruza los últimos resultados de búsqueda con la biblioteca BibTeX local."""
+def _show_library_matches(state: SessionState, query: str = "") -> None:
+    """Cruza resultados de búsqueda con la biblioteca BibTeX y muestra entradas relevantes del tema."""
     bib_path_str = get_config("YATIRI_BIBTEX_PATH")
     if not bib_path_str:
         return
@@ -232,6 +234,7 @@ def _show_library_matches(state: SessionState) -> None:
     if not bib_path.exists():
         return
 
+    # 1. Cruce exacto: cada resultado web contra la biblioteca (DOI o título)
     found_in_lib = []
     not_in_lib = []
     for result in state.last_search_results:
@@ -244,18 +247,33 @@ def _show_library_matches(state: SessionState) -> None:
         else:
             not_in_lib.append(result)
 
-    if not found_in_lib and not not_in_lib:
+    # 2. Búsqueda temática directa en la biblioteca con la misma consulta
+    local_hits = []
+    if query:
+        already_shown = {e.key for _, e in found_in_lib}
+        local_hits = [e for e in search_local_library(query, bib_path, max_results=5)
+                      if e.key not in already_shown]
+
+    if not found_in_lib and not not_in_lib and not local_hits:
         return
 
-    lines = ["\n[dim]── Cruce con biblioteca local ──[/dim]"]
+    lines = ["\n[dim]── Biblioteca local ──[/dim]"]
+
     if found_in_lib:
-        lines.append(f"[green]En tu biblioteca ({len(found_in_lib)}):[/green]")
+        lines.append(f"[green]Coincidencia exacta ({len(found_in_lib)}):[/green]")
         for result, entry in found_in_lib:
-            lines.append(f"  ✓ {entry.key}  {getattr(result, 'title', '')[:60]}")
+            lines.append(f"  ✓ [{entry.key}]  {getattr(result, 'title', '')[:65]}")
+
+    if local_hits:
+        lines.append(f"[cyan]Ya tienes sobre este tema ({len(local_hits)}):[/cyan]")
+        for entry in local_hits:
+            lines.append(f"  ◆ [{entry.key}]  {entry.short_ref()}")
+
     if not_in_lib:
-        lines.append(f"[yellow]No encontrados ({len(not_in_lib)}):[/yellow]")
+        lines.append(f"[yellow]No están en tu biblioteca ({len(not_in_lib)}):[/yellow]")
         for result in not_in_lib[:5]:
             lines.append(f"  – {getattr(result, 'title', '')[:65]}")
+
     console.print("\n".join(lines))
 
 
