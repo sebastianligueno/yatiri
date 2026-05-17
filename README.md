@@ -1,6 +1,6 @@
 # Yatiri
 
-*Herramienta personal de terminal para investigación académica en Iberoamérica*
+*Asistente personal de terminal para investigación académica en Iberoamérica*
 
 [![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
@@ -8,28 +8,42 @@
 
 ---
 
-La hice para uso propio. Soy docente universitario en Chile y trabajo con bibliografía en español y portugués. Los asistentes que encontré priorizaban el circuito anglosajón, así que armé algo que buscara en SciELO y OpenAlex y me respondiera desde ese contexto.
+## Por qué existe
 
-El nombre viene del aymara: *yatiri* es el que sabe, el que lee señales dispersas para orientar a otros. Lo elegí porque me lo sugirió alguien que quiero mucho y que conoce bien ese pueblo.
+La hice para uso propio. Soy docente universitario en Chile y trabajo con bibliografía en español y portugués. Los asistentes académicos que encontré priorizaban el circuito anglosajón: sus fuentes por defecto, sus criterios de relevancia y su noción de "literatura pertinente" apuntaban al Norte global en inglés.
 
-Si te sirve, úsala. Si la mejoras, comparte.
+Yatiri parte de otra hipótesis: la producción académica en Psicología, Ciencias Sociales, Educación e Historia tiene un circuito iberoamericano propio —con sus revistas, sus archivos y sus debates— que merece ser priorizado, no tratado como periferia. Al mismo tiempo, no ignora la literatura de corriente principal: la integra como capa adicional, no como única fuente de autoridad.
+
+El nombre viene del aymara: *yatiri* es el que sabe, el que lee señales dispersas para orientar a otros. Me lo sugirió alguien que quiero y que conoce bien ese pueblo. El nombre me pareció justo.
+
+Si te sirve para tu propio trabajo, úsala. Si la mejoras, comparte bajo la misma licencia.
 
 ---
 
 ## Qué hace
 
-Abre una sesión interactiva en el terminal con la que puedes:
+Sesión interactiva en el terminal con la que puedes:
 
-- Hacer consultas académicas con contexto iberoamericano
-- Buscar en **SciELO** y **OpenAlex** y recibir una síntesis
-- Trabajar en distintos modos: búsqueda, diseño de investigación, metodología, docencia, redacción, revisión crítica
-- Detectar qué MCPs tienes instalados en Claude Code y usarlos como parte del stack
+- Consultar con contexto iberoamericano por defecto
+- Buscar en **SciELO** y **OpenAlex** y recibir síntesis fundamentada en las fuentes recuperadas
+- Trabajar en modos especializados: búsqueda, diseño de investigación, metodología, docencia, redacción y revisión crítica
+- Ver qué MCPs de investigación tienes instalados en Claude Code y cómo usarlos
 - Mantener historial de conversación dentro de la sesión
 - Crear un workspace estructurado para cada proyecto
 
-Funciona con **DeepSeek** (muy bajo costo) u **Ollama** local (sin internet, sin costo).
+Funciona con **DeepSeek API** (muy bajo costo) u **Ollama** local (sin internet, sin costo).
+
+---
 
 ## Instalación
+
+### Requisitos previos
+
+- Python 3.10 o superior
+- Una [API key de DeepSeek](https://platform.deepseek.com/api_keys) **o** [Ollama](https://ollama.com) instalado localmente
+- Git
+
+### Pasos
 
 ```bash
 git clone https://github.com/sebastianligueno/yatiri
@@ -39,13 +53,27 @@ yatiri setup    # configura API key y región
 yatiri          # abre la sesión interactiva
 ```
 
-Con pipx:
+Con pipx (entorno aislado, recomendado):
 
 ```bash
 pipx install git+https://github.com/sebastianligueno/yatiri
+yatiri setup
 ```
 
-Ver [INSTALL.md](INSTALL.md) para instrucciones en Windows, macOS y Linux.
+Ver [INSTALL.md](INSTALL.md) para instrucciones detalladas en Windows, macOS y Linux.
+
+### Configurar la API key manualmente
+
+```bash
+# DeepSeek (recomendado)
+export DEEPSEEK_API_KEY="tu-clave"
+
+# O guárdarla permanente:
+echo "tu-clave" > ~/.deepseek_key
+echo 'export DEEPSEEK_API_KEY=$(cat ~/.deepseek_key)' >> ~/.bashrc
+```
+
+---
 
 ## Uso básico
 
@@ -59,39 +87,84 @@ yatiri chat "consulta" --mode search
 Dentro de la sesión:
 
 ```
-/search burnout docente Chile
-/teach Diseña una clase sobre muestreo probabilístico
-/design Estudio mixto sobre bienestar académico
-/verify ¿Las afirmaciones del manuscrito tienen respaldo?
-/mcp     ver MCPs disponibles
-/doctor  diagnóstico de proveedores activos
+/search burnout docente Chile revisiones
+/design Estudio mixto sobre bienestar académico universitario
+/teach  Clase de 90 min sobre muestreo probabilístico
+/write  Estructura para introducción de artículo empírico
+/verify ¿Las afirmaciones del manuscrito tienen respaldo en los datos?
+/mcp    Ver MCPs detectados y sugerencias de instalación
+/doctor Diagnóstico de proveedores activos
+/clear  Limpiar historial de la sesión
 ```
+
+---
 
 ## Modos
 
 | Modo | Para qué |
 |------|----------|
 | `general` | Consulta académica libre |
-| `search` | Búsqueda bibliográfica, fuentes |
-| `quant` | Diseño cuantitativo, estadística |
-| `qual` | Análisis cualitativo, codificación |
-| `design` | Diseño de investigación |
-| `teach` | Planificación docente |
-| `write` | Redacción académica |
-| `verify` | Revisión crítica de argumentos |
+| `search` | Búsqueda bibliográfica, síntesis de fuentes |
+| `quant` | Diseño cuantitativo, estadística, supuestos |
+| `qual` | Análisis cualitativo, codificación, corpus |
+| `design` | Diseño de investigación, coherencia metodológica |
+| `teach` | Planificación docente, secuencias, evaluación |
+| `write` | Redacción académica, estructura argumental |
+| `verify` | Revisión crítica, saltos inferenciales, trazabilidad |
 
-## Región por defecto
+---
 
-`latam` — América Latina en español y portugués. Se puede cambiar con `yatiri setup`.
+## Fuentes de búsqueda
 
-## Requisitos
+| Fuente | Qué cubre |
+|--------|-----------|
+| SciELO | Iberoamérica, artículos revisados por pares |
+| OpenAlex | 250M+ trabajos globales, open access |
+| Web (DuckDuckGo) | Institucional, normativa, prensa académica |
 
-- Python 3.10+
-- [DeepSeek API key](https://platform.deepseek.com/api_keys) o [Ollama](https://ollama.com) local
+---
 
-## Estado
+## Región
 
-Herramienta en desarrollo activo, v0.3.0. Las funciones centrales funcionan. Hay partes que todavía están sin pulir. Si encuentras algo roto, abre un issue.
+Por defecto, `latam` —América Latina en español y portugués. Se puede cambiar con `yatiri setup`.
+
+| Región | Idiomas prioritarios |
+|--------|----------------------|
+| `latam` | es, pt |
+| `iberia` | es, pt |
+| `chile` | es |
+| `brazil` | pt, es |
+| `global` | es, pt, en |
+
+---
+
+## MCPs de investigación
+
+Yatiri detecta qué herramientas MCP tienes instaladas en Claude Code (Zotero, Scite, Semantic Scholar, OpenAlex, PubMed, etc.) y las muestra con el comando `/mcp`.
+
+**Limitación importante:** Yatiri no puede *llamar* directamente a esos MCPs —eso solo lo puede hacer Claude Code, que tiene acceso al protocolo MCP. Lo que hace es inventariarte lo disponible y sugerirte cómo usarlo desde Claude Code para búsquedas más avanzadas.
+
+---
+
+## Rigor epistémico
+
+El LLM está instruido para:
+
+- Distinguir explícitamente entre fuentes recuperadas en la sesión y conocimiento de entrenamiento
+- No citar autores, años ni DOIs que no haya recuperado
+- Presentar evidencia contraria o matices que cuestionen la dirección de la consulta
+- Calibrar la certeza del lenguaje según lo que los datos permiten
+- Indicar cuándo la evidencia es insuficiente en lugar de rellenar con afirmaciones plausibles
+
+Esto reduce alucinaciones bibliográficas y sesgo confirmatorio, pero no los elimina. Verifica siempre las referencias antes de usarlas.
+
+---
+
+## Estado del proyecto
+
+v0.3.0 — en desarrollo activo. Las funciones centrales funcionan. Hay partes sin pulir. Si encuentras algo roto, abre un issue.
+
+---
 
 ## Licencia
 
@@ -99,4 +172,4 @@ Herramienta en desarrollo activo, v0.3.0. Las funciones centrales funcionan. Hay
 
 ---
 
-*Desarrollado con asistencia de Claude (Anthropic). Las decisiones de diseño, el enfoque y los casos de uso son del autor.*
+*Desarrollado con asistencia de Claude (Anthropic). Las decisiones de diseño, el enfoque regional, los casos de uso y la dirección del proyecto son del autor.*

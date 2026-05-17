@@ -16,15 +16,25 @@ from research_operator.core.session import SessionState
 from research_operator.core.web_search import search_web
 
 
+_EPISTEMIC_BASE = (
+    "Normas epistémicas irrenunciables: "
+    "(1) distingue siempre entre lo que proviene de fuentes recuperadas en esta sesión y lo que proviene de tu conocimiento de entrenamiento; "
+    "(2) cuando uses conocimiento de entrenamiento, indícalo explícitamente con frases como 'según la literatura' o 'en general se reporta'; "
+    "(3) no cites autores, años ni DOIs que no hayas recuperado en esta sesión —si no tienes la fuente, di que no la tienes; "
+    "(4) si la evidencia disponible es insuficiente para responder con confianza, dilo; "
+    "(5) presenta activamente evidencia contraria o matices que cuestionen la dirección de la consulta; "
+    "(6) calibra la certeza: usa 'sugiere', 'es consistente con', 'habría que verificar' según corresponda, nunca afirmes más de lo que los datos permiten."
+)
+
 MODE_GUIDANCE = {
-    "general": "Responda como asistente académico general para Psicología y Ciencias Sociales.",
-    "search": "Priorice estrategias de búsqueda, tipos de fuente y criterios de selección.",
-    "quant": "Priorice operacionalización, interpretación estadística, supuestos y cautelas cuantitativas.",
-    "qual": "Priorice categorías, codificación, corpus, trazabilidad interpretativa y análisis cualitativo.",
-    "design": "Priorice pregunta, objetivos, diseño metodológico, coherencia y amenazas de validez.",
-    "teach": "Priorice claridad pedagógica, secuencia didáctica, actividades, evaluación y tono universitario.",
-    "write": "Priorice estructura argumental, claridad académica y economía de redacción.",
-    "verify": "Priorice detección de afirmaciones débiles, saltos inferenciales y necesidad de respaldo.",
+    "general": f"Asistente académico para Psicología y Ciencias Sociales. {_EPISTEMIC_BASE}",
+    "search": f"Modo búsqueda: sintetiza solo desde las fuentes recuperadas en esta sesión. Si no hay fuentes suficientes, indícalo antes de responder. {_EPISTEMIC_BASE}",
+    "quant": f"Modo cuantitativo: prioriza operacionalización, supuestos y cautelas estadísticas. Señala cuando una interpretación excede lo que el diseño permite. {_EPISTEMIC_BASE}",
+    "qual": f"Modo cualitativo: prioriza trazabilidad interpretativa entre dato, código, categoría e inferencia. Advierte cuando se generalizan hallazgos más allá del corpus. {_EPISTEMIC_BASE}",
+    "design": f"Modo diseño: prioriza coherencia entre pregunta, objetivos, unidad de análisis y amenazas de validez. Señala inconsistencias aunque no se pidan. {_EPISTEMIC_BASE}",
+    "teach": f"Modo docencia: prioriza claridad pedagógica, secuencia didáctica y evaluación formativa. {_EPISTEMIC_BASE}",
+    "write": f"Modo redacción: prioriza estructura argumental y economía de lenguaje. Señala afirmaciones que necesiten respaldo antes de publicar. {_EPISTEMIC_BASE}",
+    "verify": f"Modo verificación: tu tarea principal es encontrar problemas, no confirmar lo que se dice. Identifica afirmaciones sin respaldo, saltos inferenciales, generalizaciones indebidas y posibles sesgos de confirmación. {_EPISTEMIC_BASE}",
 }
 
 
@@ -106,10 +116,20 @@ def build_user_prompt(state: SessionState, query: str, chunks: list[tuple[str, s
         for item in web_results:
             lines.append(f"- {item.source_type} | {item.title} | {item.url} | {item.snippet}")
     lines.append("")
-    lines.append(
-        "Responda en español, de forma útil y concreta. Distinga entre sugerencia y dato apoyado en contexto. "
-        "Si usa resultados web, mencione explícitamente que provienen de búsqueda web."
-    )
+    if web_results:
+        lines.append(
+            "INSTRUCCIÓN: sintetiza la respuesta usando las fuentes recuperadas arriba. "
+            "Cita el título o URL de la fuente cuando hagas una afirmación específica. "
+            "Si las fuentes no son suficientes para responder, dilo antes de completar con conocimiento general. "
+            "No inventes autores, años ni datos que no aparezcan en las fuentes recuperadas."
+        )
+    else:
+        lines.append(
+            "INSTRUCCIÓN: no hay fuentes recuperadas en esta sesión. "
+            "Responde con conocimiento general pero márcalo explícitamente como tal. "
+            "No cites autores ni años específicos a menos que estés seguro de su existencia. "
+            "Si la respuesta requiere evidencia empírica, recomienda buscarla con /search."
+        )
     return "\n".join(lines)
 
 
