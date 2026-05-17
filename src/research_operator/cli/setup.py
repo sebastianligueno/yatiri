@@ -9,44 +9,57 @@ try:
     def _print(msg: str) -> None:
         _console.print(msg)
 except Exception:
+    _console = None
     def _print(msg: str) -> None:
         print(msg)
 
 
-_PROVIDERS = ["auto", "deepseek", "ollama"]
-_DEEPSEEK_MODELS = ["deepseek-chat", "deepseek-reasoner"]
+_PROVIDERS = ["auto", "deepseek", "openai", "groq", "anthropic", "ollama"]
+
+_PROVIDER_INFO = {
+    "auto":      "intenta en orden: DeepSeek → OpenAI → Groq → Anthropic → Ollama",
+    "deepseek":  "DeepSeek API — bajo costo, buena calidad  https://platform.deepseek.com",
+    "openai":    "OpenAI API — o cualquier API compatible (base URL configurable)",
+    "groq":      "Groq — inferencia rápida, modelos Llama  https://console.groq.com",
+    "anthropic": "Anthropic / Claude API  https://console.anthropic.com",
+    "ollama":    "Ollama local — sin internet, sin costo  https://ollama.com",
+}
 
 
 def run_setup() -> None:
     _print("\n[bold]Yatiri — Configuración[/bold]")
-    _print("Esto se guarda en [cyan]~/.yatiri/config.yaml[/cyan]")
-    _print("Las variables de entorno siguen teniendo prioridad si están definidas.\n")
+    _print("Guardado en [cyan]~/.yatiri/config.yaml[/cyan]  (las variables de entorno tienen prioridad)\n")
 
     _show_current()
 
-    _print("\n¿Qué quiere configurar?")
-    _print("  1. Proveedor y modelo principal")
-    _print("  2. DeepSeek API key")
-    _print("  3. Ollama URL y modelo")
-    _print("  4. Región e idioma de búsqueda")
-    _print("  5. Borrar configuración guardada")
-    _print("  6. Salir sin cambios\n")
+    _print("\n¿Qué quieres configurar?")
+    _print("  1. Proveedor LLM")
+    _print("  2. DeepSeek")
+    _print("  3. OpenAI (o API compatible)")
+    _print("  4. Groq")
+    _print("  5. Anthropic / Claude")
+    _print("  6. Ollama local")
+    _print("  7. Región e idioma de búsqueda")
+    _print("  8. Borrar configuración guardada")
+    _print("  9. Salir\n")
 
-    choice = _ask("Opción [1-6]", default="6").strip()
+    choice = _ask("Opción [1-9]", default="9").strip()
 
-    if choice == "1":
-        _configure_provider()
-    elif choice == "2":
-        _configure_deepseek_key()
-    elif choice == "3":
-        _configure_ollama()
-    elif choice == "4":
-        _configure_region()
-    elif choice == "5":
-        _clear_config()
+    dispatch = {
+        "1": _configure_provider,
+        "2": lambda: _configure_api_key("deepseek"),
+        "3": lambda: _configure_api_key("openai"),
+        "4": lambda: _configure_api_key("groq"),
+        "5": lambda: _configure_api_key("anthropic"),
+        "6": _configure_ollama,
+        "7": _configure_region,
+        "8": _clear_config,
+    }
+    fn = dispatch.get(choice)
+    if fn:
+        fn()
     else:
         _print("Sin cambios.")
-
     _print("")
 
 
@@ -54,14 +67,24 @@ def _show_current() -> None:
     summary = config_summary()
     try:
         table = Table(title="Configuración actual", show_header=True)
-        table.add_column("Parámetro", style="cyan")
+        table.add_column("Parámetro", style="cyan", min_width=18)
         table.add_column("Valor")
-        table.add_row("Proveedor", summary["provider"])
-        table.add_row("DeepSeek key", summary["deepseek_key"])
-        table.add_row("DeepSeek model", summary["deepseek_model"])
-        table.add_row("Ollama URL", summary["ollama_url"])
-        table.add_row("Ollama model", summary["ollama_model"])
-        table.add_row("Archivo config", summary["config_file"])
+        rows = [
+            ("Proveedor activo", summary["provider"]),
+            ("Región", summary["region"]),
+            ("DeepSeek key", summary["deepseek_key"]),
+            ("DeepSeek model", summary["deepseek_model"]),
+            ("OpenAI key", summary["openai_key"]),
+            ("OpenAI model", summary["openai_model"]),
+            ("Groq key", summary["groq_key"]),
+            ("Groq model", summary["groq_model"]),
+            ("Anthropic key", summary["anthropic_key"]),
+            ("Anthropic model", summary["anthropic_model"]),
+            ("Ollama URL", summary["ollama_url"]),
+            ("Ollama model", summary["ollama_model"]),
+        ]
+        for k, v in rows:
+            table.add_row(k, v)
         _console.print(table)
     except Exception:
         for k, v in summary.items():
@@ -69,45 +92,78 @@ def _show_current() -> None:
 
 
 def _configure_provider() -> None:
-    _print(f"Proveedores disponibles: {', '.join(_PROVIDERS)}")
-    _print("  auto     — intenta DeepSeek primero, luego Ollama")
-    _print("  deepseek — solo DeepSeek API (requiere clave)")
-    _print("  ollama   — solo Ollama local (sin clave, requiere daemon)")
-    provider = _ask("Proveedor", default=get_config("SCHOLAR_MODEL_PROVIDER") or "auto").strip().lower()
+    _print("\nProveedores disponibles:")
+    for name, desc in _PROVIDER_INFO.items():
+        marker = " ←" if name == (get_config("SCHOLAR_MODEL_PROVIDER") or "auto") else ""
+        _print(f"  {name:<12} {desc}{marker}")
+    provider = _ask("\nProveedor", default=get_config("SCHOLAR_MODEL_PROVIDER") or "auto").strip().lower()
     if provider not in _PROVIDERS:
-        _print(f"Valor no reconocido, usando 'auto'.")
-        provider = "auto"
+        _print(f"No reconocido. Opciones: {', '.join(_PROVIDERS)}")
+        return
     save_config("SCHOLAR_MODEL_PROVIDER", provider)
-    _print(f"Proveedor guardado: {provider}")
-
-    if provider in {"deepseek", "auto"}:
-        _print(f"\nModelos DeepSeek: {', '.join(_DEEPSEEK_MODELS)}")
-        model = _ask("Modelo DeepSeek", default=get_config("DEEPSEEK_MODEL") or "deepseek-chat").strip()
-        if model:
-            save_config("DEEPSEEK_MODEL", model)
-            _print(f"Modelo guardado: {model}")
+    _print(f"Proveedor guardado: [green]{provider}[/green]")
 
 
-def _configure_deepseek_key() -> None:
-    _print("\nObtén tu clave en https://platform.deepseek.com/api_keys")
-    current = get_config("DEEPSEEK_API_KEY")
+def _configure_api_key(provider: str) -> None:
+    key_map = {
+        "deepseek":  ("DEEPSEEK_API_KEY",  "DEEPSEEK_MODEL",  "deepseek-chat",
+                      "https://platform.deepseek.com/api_keys",
+                      ["deepseek-chat", "deepseek-reasoner"]),
+        "openai":    ("OPENAI_API_KEY",    "OPENAI_MODEL",    "gpt-4o-mini",
+                      "https://platform.openai.com/api-keys",
+                      ["gpt-4o-mini", "gpt-4o", "gpt-4.1-mini"]),
+        "groq":      ("GROQ_API_KEY",      "GROQ_MODEL",      "llama-3.1-8b-instant",
+                      "https://console.groq.com/keys",
+                      ["llama-3.1-8b-instant", "llama-3.3-70b-versatile", "mixtral-8x7b-32768"]),
+        "anthropic": ("ANTHROPIC_API_KEY", "ANTHROPIC_MODEL", "claude-haiku-4-5-20251001",
+                      "https://console.anthropic.com/settings/keys",
+                      ["claude-haiku-4-5-20251001", "claude-sonnet-4-6", "claude-opus-4-6"]),
+    }
+    key_cfg, model_cfg, default_model, key_url, models = key_map[provider]
+
+    _print(f"\n{provider.capitalize()} — clave API")
+    _print(f"Obtén tu clave en: {key_url}")
+    current = get_config(key_cfg)
     if current:
         _print(f"Clave actual: {current[:4]}...{current[-4:] if len(current) > 8 else '***'}")
         if _ask("¿Reemplazar?", default="n").strip().lower() not in {"s", "si", "sí", "y", "yes"}:
-            return
-    key = _ask_secret("Nueva API key (Enter para cancelar)")
-    if key:
-        save_config("DEEPSEEK_API_KEY", key)
-        _print("Clave guardada.")
+            pass  # skip key replacement but still ask model
+        else:
+            key = _ask_secret("Nueva API key (Enter para cancelar)")
+            if key:
+                save_config(key_cfg, key)
+                _print("Clave guardada.")
     else:
-        _print("Sin cambios.")
+        key = _ask_secret("API key (Enter para cancelar)")
+        if key:
+            save_config(key_cfg, key)
+            _print("Clave guardada.")
+
+    _print(f"Modelos disponibles: {', '.join(models)}")
+    model = _ask("Modelo", default=get_config(model_cfg) or default_model).strip()
+    if model:
+        save_config(model_cfg, model)
+        _print(f"Modelo guardado: {model}")
+
+    # Para OpenAI: opción de base URL personalizada (APIs compatibles)
+    if provider == "openai":
+        current_url = get_config("OPENAI_BASE_URL")
+        _print("\nSi usas una API compatible (Together AI, Azure, LM Studio…) puedes")
+        _print("configurar una URL base diferente. Deja vacío para usar OpenAI oficial.")
+        url = _ask("Base URL", default=current_url or "https://api.openai.com/v1").strip()
+        if url and url != "https://api.openai.com/v1":
+            save_config("OPENAI_BASE_URL", url)
+            _print(f"Base URL guardada: {url}")
+        elif not url:
+            delete_config("OPENAI_BASE_URL")
 
 
 def _configure_ollama() -> None:
-    url = _ask("Ollama URL", default=get_config("SCHOLAR_OLLAMA_URL") or "http://localhost:11434/api/chat").strip()
+    _print("\nOllama local — requiere que el daemon esté corriendo (`ollama serve`)")
+    url = _ask("URL", default=get_config("SCHOLAR_OLLAMA_URL") or "http://localhost:11434/api/chat").strip()
     if url:
         save_config("SCHOLAR_OLLAMA_URL", url)
-    model = _ask("Modelo Ollama", default=get_config("SCHOLAR_OLLAMA_MODEL") or "phi4-mini:3.8b").strip()
+    model = _ask("Modelo", default=get_config("SCHOLAR_OLLAMA_MODEL") or "phi4-mini:3.8b").strip()
     if model:
         save_config("SCHOLAR_OLLAMA_MODEL", model)
     _print("Configuración Ollama guardada.")
@@ -115,12 +171,13 @@ def _configure_ollama() -> None:
 
 def _configure_region() -> None:
     _print("\nRegiones disponibles:")
+    current_region = get_config("AMAUTA_REGION") or "latam"
     for key, info in REGIONS.items():
-        current = " ← actual" if key == (get_config("AMAUTA_REGION") or "latam") else ""
-        _print(f"  {key:10} {info['label']}{current}")
-        _print(f"            Idiomas: {', '.join(info['languages'])}")
-        _print(f"            Fuentes: {', '.join(info['priority_sources'][:3])}")
-    region = _ask("\nRegión", default=get_config("AMAUTA_REGION") or "latam").strip().lower()
+        marker = " ← actual" if key == current_region else ""
+        _print(f"  {key:<10} {info['label']}{marker}")
+        _print(f"             Idiomas: {', '.join(info['languages'])}")
+        _print(f"             Fuentes: {', '.join(info['priority_sources'][:3])}")
+    region = _ask("\nRegión", default=current_region).strip().lower()
     if region not in REGIONS:
         _print(f"Región no reconocida. Opciones: {', '.join(REGIONS.keys())}")
         return
@@ -131,8 +188,15 @@ def _configure_region() -> None:
 def _clear_config() -> None:
     confirm = _ask("¿Borrar toda la configuración guardada? (s/N)", default="n").strip().lower()
     if confirm in {"s", "si", "sí", "y", "yes"}:
-        for key in ["DEEPSEEK_API_KEY", "DEEPSEEK_MODEL", "SCHOLAR_MODEL_PROVIDER",
-                    "SCHOLAR_OLLAMA_URL", "SCHOLAR_OLLAMA_MODEL"]:
+        all_keys = [
+            "DEEPSEEK_API_KEY", "DEEPSEEK_MODEL", "DEEPSEEK_BASE_URL",
+            "OPENAI_API_KEY", "OPENAI_MODEL", "OPENAI_BASE_URL",
+            "GROQ_API_KEY", "GROQ_MODEL",
+            "ANTHROPIC_API_KEY", "ANTHROPIC_MODEL",
+            "SCHOLAR_MODEL_PROVIDER", "SCHOLAR_OLLAMA_URL", "SCHOLAR_OLLAMA_MODEL",
+            "AMAUTA_REGION",
+        ]
+        for key in all_keys:
             delete_config(key)
         _print("Configuración borrada. Las variables de entorno siguen activas.")
     else:

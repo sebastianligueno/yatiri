@@ -10,8 +10,10 @@ from research_operator.core.memory import load_memory_text
 from research_operator.core.openalex import search_openalex
 from research_operator.core.profiles import infer_profile
 from research_operator.core.project import research_dir
+from research_operator.core.pubmed import search_pubmed
 from research_operator.core.registry import read_jsonl_records
 from research_operator.core.scielo import search_scielo
+from research_operator.core.semantic_scholar import search_semantic_scholar
 from research_operator.core.session import SessionState
 from research_operator.core.web_search import search_web
 
@@ -95,10 +97,29 @@ def gather_context(state: SessionState, query: str) -> list[tuple[str, str]]:
 def gather_web_results(state: SessionState, query: str):
     if state.mode != "search":
         return []
-    scielo_results = search_scielo(query, max_results=4)
-    openalex_results = search_openalex(query, max_results=4)
-    web_results = search_web(query, max_results=3)
-    return scielo_results + openalex_results + web_results
+    region = get_region()
+    results = []
+    # Fuentes iberoamericanas siempre presentes
+    results += search_scielo(query, max_results=3)
+    results += search_openalex(query, max_results=3)
+    # Semantic Scholar y PubMed: amplían cobertura global
+    results += search_semantic_scholar(query, max_results=3)
+    # PubMed: prioritario en regiones globales o cuando hay términos clínicos
+    if region.get("languages") and "en" in region["languages"] or _is_health_query(query):
+        results += search_pubmed(query, max_results=2)
+    # Web general
+    results += search_web(query, max_results=3)
+    return results
+
+
+def _is_health_query(query: str) -> bool:
+    health_terms = {
+        "salud", "clínico", "clínica", "terapia", "psicopatología", "diagnóstico",
+        "dsm", "cie", "mental health", "clinical", "therapy", "psychiatric",
+        "burnout", "estrés", "ansiedad", "depresión", "trauma", "bienestar",
+    }
+    q = query.lower()
+    return any(term in q for term in health_terms)
 
 
 def build_user_prompt(state: SessionState, query: str, chunks: list[tuple[str, str]], web_results: list) -> str:

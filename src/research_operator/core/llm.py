@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-import os
 
 from research_operator.core.academic_stack import render_stack_report
 from research_operator.core.config import get_config
@@ -19,96 +18,151 @@ class ChatResult:
     error: str | None = None
 
 
+# Orden de intento para modo "auto": primero el que tenga clave
+_AUTO_ORDER = ["deepseek", "openai", "groq", "anthropic", "ollama"]
+
+
 def chat_completion(system_prompt: str, messages: list[dict]) -> ChatResult:
-    """messages: lista de {"role": "user"|"assistant", "content": str}"""
+    """Despacha la consulta al proveedor configurado o al primero disponible."""
     provider = (get_config("SCHOLAR_MODEL_PROVIDER") or "auto").lower()
-    attempted: list[str] = []
+
+    candidates = _AUTO_ORDER if provider == "auto" else [provider]
     errors: list[str] = []
 
-    if provider in {"deepseek", "auto"}:
-        attempted.append("deepseek")
-        response = deepseek_chat(system_prompt, messages)
-        if response.content:
-            return response
-        if response.error:
-            errors.append(f"deepseek={response.error}")
+    for name in candidates:
+        result = _call_provider(name, system_prompt, messages)
+        if result.content:
+            return result
+        if result.error:
+            errors.append(f"{name}={result.error}")
 
-    if provider in {"ollama", "auto"}:
-        attempted.append("ollama")
-        response = ollama_chat(system_prompt, messages)
-        if response.content:
-            return response
-        if response.error:
-            errors.append(f"ollama={response.error}")
-
-    provider_label = provider if provider != "auto" else " -> ".join(attempted or ["none"])
-    return ChatResult(content=None, provider=provider_label, error="; ".join(errors) if errors else "no provider available")
+    label = provider if provider != "auto" else " → ".join(candidates)
+    return ChatResult(
+        content=None,
+        provider=label,
+        error="; ".join(errors) if errors else "ningún proveedor disponible",
+    )
 
 
-def active_provider_label() -> str:
-    provider = get_config("SCHOLAR_MODEL_PROVIDER") or "auto"
-    deepseek_key = bool(get_config("DEEPSEEK_API_KEY"))
-    ollama_url = get_config("SCHOLAR_OLLAMA_URL") or "http://localhost:11434/api/chat"
-    return f"provider={provider}, deepseek_key={'yes' if deepseek_key else 'no'}, ollama={ollama_url}"
+def _call_provider(name: str, system_prompt: str, messages: list[dict]) -> ChatResult:
+    if name == "deepseek":
+        return _openai_compat(
+            system_prompt, messages,
+            base_url=get_config("DEEPSEEK_BASE_URL") or "https://api.deepseek.com",
+            api_key=get_config("DEEPSEEK_API_KEY"),
+            model=get_config("DEEPSEEK_MODEL") or "deepseek-chat",
+            provider_name="deepseek",
+            extra_payload=_deepseek_extra(),
+        )
+    if name == "openai":
+        return _openai_compat(
+            system_prompt, messages,
+            base_url=get_config("OPENAI_BASE_URL") or "https://api.openai.com/v1",
+            api_key=get_config("OPENAI_API_KEY"),
+            model=get_config("OPENAI_MODEL") or "gpt-4o-mini",
+            provider_name="openai",
+        )
+    if name == "groq":
+        return _openai_compat(
+            system_prompt, messages,
+            base_url="https://api.groq.com/openai/v1",
+            api_key=get_config("GROQ_API_KEY"),
+            model=get_config("GROQ_MODEL") or "llama-3.1-8b-instant",
+            provider_name="groq",
+        )
+    if name == "anthropic":
+        return _anthropic_chat(system_prompt, messages)
+    if name == "ollama":
+        return _ollama_chat(system_prompt, messages)
+    return ChatResult(content=None, provider=name, error=f"proveedor desconocido: {name}")
 
 
-def provider_diagnostics() -> str:
-    lines = [
-        active_provider_label(),
-        f"requests_available={'yes' if requests is not None else 'no'}",
-        f"deepseek_model={get_config('DEEPSEEK_MODEL') or 'deepseek-chat'}",
-        f"ollama_model={get_config('SCHOLAR_OLLAMA_MODEL') or 'phi4-mini:3.8b'}",
-        "",
-        render_stack_report(),
-    ]
-    return "\n".join(lines)
-
-
-def deepseek_chat(system_prompt: str, messages: list[dict]) -> ChatResult:
-    if requests is None:
-        return ChatResult(content=None, provider="deepseek", error="requests not installed")
-
-    api_key = get_config("DEEPSEEK_API_KEY")
-    if not api_key:
-        return ChatResult(content=None, provider="deepseek", error="missing DEEPSEEK_API_KEY (use `yatiri setup`)")
-
-    base_url = get_config("DEEPSEEK_BASE_URL") or "https://api.deepseek.com"
-    model = get_config("DEEPSEEK_MODEL") or "deepseek-chat"
+def _deepseek_extra() -> dict:
     thinking_mode = get_config("DEEPSEEK_THINKING_MODE") or "disabled"
+    if thinking_mode != "disabled":
+        return {"thinking": {"type": thinking_mode}}
+    return {}
 
-    payload = {
+
+def _openai_compat(
+    system_prompt: str,
+    messages: list[dict],
+    base_url: str,
+    api_key: str,
+    model: str,
+    provider_name: str,
+    extra_payload: dict | None = None,
+) -> ChatResult:
+    if requests is None:
+        return ChatResult(content=None, provider=provider_name, error="requests no instalado")
+    if not api_key:
+        return ChatResult(
+            content=None, provider=provider_name,
+            error=f"sin clave {provider_name.upper()}_API_KEY (usa `yatiri setup`)",
+        )
+    payload: dict = {
         "model": model,
         "messages": [{"role": "system", "content": system_prompt}] + messages,
         "stream": False,
         "max_tokens": 4096,
     }
-    if thinking_mode != "disabled":
-        payload["thinking"] = {"type": thinking_mode}
+    if extra_payload:
+        payload.update(extra_payload)
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    try:
+        resp = requests.post(
+            f"{base_url.rstrip('/')}/chat/completions",
+            json=payload, headers=headers, timeout=60,
+        )
+        resp.raise_for_status()
+        choices = resp.json().get("choices", [])
+        if not choices:
+            return ChatResult(content=None, provider=provider_name, error="respuesta vacía")
+        return ChatResult(
+            content=choices[0].get("message", {}).get("content"),
+            provider=provider_name,
+        )
+    except Exception as exc:
+        return ChatResult(content=None, provider=provider_name, error=str(exc))
+
+
+def _anthropic_chat(system_prompt: str, messages: list[dict]) -> ChatResult:
+    if requests is None:
+        return ChatResult(content=None, provider="anthropic", error="requests no instalado")
+    api_key = get_config("ANTHROPIC_API_KEY")
+    if not api_key:
+        return ChatResult(
+            content=None, provider="anthropic",
+            error="sin clave ANTHROPIC_API_KEY (usa `yatiri setup`)",
+        )
+    model = get_config("ANTHROPIC_MODEL") or "claude-haiku-4-5-20251001"
+    payload = {
+        "model": model,
+        "max_tokens": 4096,
+        "system": system_prompt,
+        "messages": messages,
+    }
     headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
+        "x-api-key": api_key,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
     }
     try:
-        response = requests.post(
-            f"{base_url.rstrip('/')}/chat/completions",
-            json=payload,
-            headers=headers,
-            timeout=60,
+        resp = requests.post(
+            "https://api.anthropic.com/v1/messages",
+            json=payload, headers=headers, timeout=60,
         )
-        response.raise_for_status()
-        data = response.json()
-        choices = data.get("choices", [])
-        if not choices:
-            return ChatResult(content=None, provider="deepseek", error="empty choices")
-        return ChatResult(content=choices[0].get("message", {}).get("content"), provider="deepseek")
+        resp.raise_for_status()
+        content_blocks = resp.json().get("content", [])
+        text = " ".join(b.get("text", "") for b in content_blocks if b.get("type") == "text")
+        return ChatResult(content=text or None, provider="anthropic")
     except Exception as exc:
-        return ChatResult(content=None, provider="deepseek", error=str(exc))
+        return ChatResult(content=None, provider="anthropic", error=str(exc))
 
 
-def ollama_chat(system_prompt: str, messages: list[dict]) -> ChatResult:
+def _ollama_chat(system_prompt: str, messages: list[dict]) -> ChatResult:
     if requests is None:
-        return ChatResult(content=None, provider="ollama", error="requests not installed")
-
+        return ChatResult(content=None, provider="ollama", error="requests no instalado")
     url = get_config("SCHOLAR_OLLAMA_URL") or "http://localhost:11434/api/chat"
     model = get_config("SCHOLAR_OLLAMA_MODEL") or "phi4-mini:3.8b"
     payload = {
@@ -118,9 +172,39 @@ def ollama_chat(system_prompt: str, messages: list[dict]) -> ChatResult:
         "options": {"temperature": 0.2, "num_ctx": 8192},
     }
     try:
-        response = requests.post(url, json=payload, timeout=45)
-        response.raise_for_status()
-        data = response.json()
-        return ChatResult(content=data.get("message", {}).get("content"), provider="ollama")
+        resp = requests.post(url, json=payload, timeout=45)
+        resp.raise_for_status()
+        return ChatResult(
+            content=resp.json().get("message", {}).get("content"),
+            provider="ollama",
+        )
     except Exception as exc:
         return ChatResult(content=None, provider="ollama", error=str(exc))
+
+
+def active_provider_label() -> str:
+    provider = get_config("SCHOLAR_MODEL_PROVIDER") or "auto"
+    keys = {
+        "deepseek": bool(get_config("DEEPSEEK_API_KEY")),
+        "openai": bool(get_config("OPENAI_API_KEY")),
+        "groq": bool(get_config("GROQ_API_KEY")),
+        "anthropic": bool(get_config("ANTHROPIC_API_KEY")),
+    }
+    keys_str = ", ".join(f"{k}={'sí' if v else 'no'}" for k, v in keys.items())
+    ollama = get_config("SCHOLAR_OLLAMA_URL") or "http://localhost:11434/api/chat"
+    return f"provider={provider}, claves=[{keys_str}], ollama={ollama}"
+
+
+def provider_diagnostics() -> str:
+    lines = [
+        active_provider_label(),
+        f"requests_available={'sí' if requests is not None else 'no'}",
+        f"deepseek_model={get_config('DEEPSEEK_MODEL') or 'deepseek-chat'}",
+        f"openai_model={get_config('OPENAI_MODEL') or 'gpt-4o-mini'}",
+        f"groq_model={get_config('GROQ_MODEL') or 'llama-3.1-8b-instant'}",
+        f"anthropic_model={get_config('ANTHROPIC_MODEL') or 'claude-haiku-4-5-20251001'}",
+        f"ollama_model={get_config('SCHOLAR_OLLAMA_MODEL') or 'phi4-mini:3.8b'}",
+        "",
+        render_stack_report(),
+    ]
+    return "\n".join(lines)

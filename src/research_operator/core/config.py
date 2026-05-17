@@ -10,14 +10,27 @@ _CONFIG_FILE = _CONFIG_DIR / "config.yaml"
 
 # Mapeo de claves internas a variables de entorno equivalentes
 _ENV_ALIASES: dict[str, str] = {
+    # DeepSeek
     "DEEPSEEK_API_KEY": "DEEPSEEK_API_KEY",
     "DEEPSEEK_MODEL": "DEEPSEEK_MODEL",
     "DEEPSEEK_BASE_URL": "DEEPSEEK_BASE_URL",
     "DEEPSEEK_THINKING_MODE": "DEEPSEEK_THINKING_MODE",
+    # OpenAI (o cualquier API compatible)
+    "OPENAI_API_KEY": "OPENAI_API_KEY",
+    "OPENAI_MODEL": "OPENAI_MODEL",
+    "OPENAI_BASE_URL": "OPENAI_BASE_URL",
+    # Groq
+    "GROQ_API_KEY": "GROQ_API_KEY",
+    "GROQ_MODEL": "GROQ_MODEL",
+    # Anthropic
+    "ANTHROPIC_API_KEY": "ANTHROPIC_API_KEY",
+    "ANTHROPIC_MODEL": "ANTHROPIC_MODEL",
+    # Proveedor y Ollama
     "SCHOLAR_MODEL_PROVIDER": "SCHOLAR_MODEL_PROVIDER",
     "SCHOLAR_OLLAMA_MODEL": "SCHOLAR_OLLAMA_MODEL",
     "SCHOLAR_OLLAMA_URL": "SCHOLAR_OLLAMA_URL",
     "SCHOLAR_CONTACT_EMAIL": "SCHOLAR_CONTACT_EMAIL",
+    # Región
     "AMAUTA_REGION": "AMAUTA_REGION",
     "AMAUTA_LANGUAGES": "AMAUTA_LANGUAGES",
 }
@@ -124,17 +137,20 @@ def delete_config(key: str) -> None:
 
 def config_summary() -> dict:
     """Devuelve el estado visible de la configuración (sin mostrar claves completas)."""
-    provider = get_config("SCHOLAR_MODEL_PROVIDER") or "auto"
-    deepseek_key = get_config("DEEPSEEK_API_KEY")
-    ollama_url = get_config("SCHOLAR_OLLAMA_URL") or "http://localhost:11434/api/chat"
     return {
-        "provider": provider,
-        "deepseek_key": _mask(deepseek_key),
+        "provider": get_config("SCHOLAR_MODEL_PROVIDER") or "auto",
+        "deepseek_key": _mask(get_config("DEEPSEEK_API_KEY")),
         "deepseek_model": get_config("DEEPSEEK_MODEL") or "deepseek-chat",
-        "ollama_url": ollama_url,
+        "openai_key": _mask(get_config("OPENAI_API_KEY")),
+        "openai_model": get_config("OPENAI_MODEL") or "gpt-4o-mini",
+        "groq_key": _mask(get_config("GROQ_API_KEY")),
+        "groq_model": get_config("GROQ_MODEL") or "llama-3.1-8b-instant",
+        "anthropic_key": _mask(get_config("ANTHROPIC_API_KEY")),
+        "anthropic_model": get_config("ANTHROPIC_MODEL") or "claude-haiku-4-5-20251001",
+        "ollama_url": get_config("SCHOLAR_OLLAMA_URL") or "http://localhost:11434/api/chat",
         "ollama_model": get_config("SCHOLAR_OLLAMA_MODEL") or "phi4-mini:3.8b",
+        "region": get_config("AMAUTA_REGION") or "latam",
         "config_file": str(_CONFIG_FILE),
-        "config_file_exists": _CONFIG_FILE.exists(),
     }
 
 
