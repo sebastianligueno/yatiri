@@ -31,8 +31,16 @@ def start_repl() -> None:
     state = SessionState()
     console.print(
         Panel.fit(
-            "Yatiri — Asistente Académico\nPsicología | Ciencias Sociales | Métodos | Docencia\n"
-            "Escriba una consulta o use /help\n"
+            "Yatiri — Asistente Académico\n"
+            "Psicología · Ciencias Sociales · Métodos · Docencia\n\n"
+            "Puedes escribir directamente o usar comandos:\n"
+            "  /search <tema>     busca en SciELO, OpenAlex, Semantic Scholar, HAL, J-STAGE…\n"
+            "  /brief             completa la ficha de tu proyecto de investigación\n"
+            "  /review            revisión crítica del proyecto (como evaluador externo)\n"
+            "  /export            exporta resultados como fichas .md para Obsidian/Zettlr\n"
+            "  /design /teach /write /verify   modos especializados\n"
+            "  /doctor            diagnóstico de proveedor activo\n"
+            "  /help              lista completa de comandos\n\n"
             f"{active_provider_label()}",
             title="Yatiri",
         )

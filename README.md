@@ -200,6 +200,39 @@ Esto reduce alucinaciones bibliográficas y sesgo confirmatorio, pero no los eli
 
 ---
 
+## Exportación bibliográfica
+
+`/export` o `/export ~/mi-vault/bibliografía` convierte los resultados de la última búsqueda en fichas `.md` con frontmatter YAML. Obsidian, Zettlr, Joplin y Notion las reconocen directamente.
+
+```yaml
+---
+title: "Burnout y liderazgo en escuelas chilenas"
+url: https://doi.org/10.xxxx/xxxxx
+year: 2023
+source: academic
+citations: 18
+added: 2026-05-16
+tags: [bibliografía, yatiri]
+---
+```
+
+---
+
+## En exploración
+
+Ideas que podrían llegar en versiones futuras, sin fecha ni promesa:
+
+- **Tesauro por proyecto** — red de términos enlazados a fuentes, exportable como vault Obsidian con wikilinks
+- **Búsqueda en carpetas locales** — indexar PDFs y notas locales para usarlos como contexto
+- **Exportación BibTeX / RIS** — para flujos con LaTeX o Zotero/Mendeley
+- **MCPs en otros agentes** — detección en Codex CLI, Gemini CLI, Hermes y similares
+- **Zotero directo** — búsqueda en biblioteca personal vía REST API sin necesitar Claude Code abierto
+- **Caché de instrucciones** — para reducir costos con sesiones largas en APIs que lo soporten
+
+Si alguna de estas te sirve, abre un issue.
+
+---
+
 ## Estado del proyecto
 
 v0.3.0 — en desarrollo activo. Las funciones centrales funcionan. Hay partes sin pulir. Si encuentras algo roto, abre un issue.
