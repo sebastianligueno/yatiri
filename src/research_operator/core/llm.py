@@ -235,9 +235,9 @@ def active_provider_label() -> str:
         "groq": bool(get_config("GROQ_API_KEY")),
         "anthropic": bool(get_config("ANTHROPIC_API_KEY")),
     }
-    keys_str = ", ".join(f"{k}={'sí' if v else 'no'}" for k, v in keys.items())
+    active = [k for k, v in keys.items() if v] or ["ollama"]
     ollama = get_config("SCHOLAR_OLLAMA_URL") or "http://localhost:11434/api/chat"
-    return f"provider={provider}, claves=[{keys_str}], ollama={ollama}"
+    return f"provider={provider}, activos={'+'.join(active)}, ollama={ollama}"
 
 
 def provider_diagnostics() -> str:

@@ -24,7 +24,10 @@ _EPISTEMIC_BASE = (
     "Normas epistémicas irrenunciables: "
     "(1) distingue siempre entre lo que proviene de fuentes recuperadas en esta sesión y lo que proviene de tu conocimiento de entrenamiento; "
     "(2) cuando uses conocimiento de entrenamiento, indícalo explícitamente con frases como 'según la literatura' o 'en general se reporta'; "
-    "(3) no cites autores, años ni DOIs que no hayas recuperado en esta sesión —si no tienes la fuente, di que no la tienes; "
+    "(3) PROHIBICIÓN ABSOLUTA: no inventes ni construyas referencias bibliográficas, autores, años, títulos, DOIs ni URLs. "
+    "Si no tienes una fuente recuperada en esta sesión, no la cites. "
+    "Si el usuario pide referencias, responde: 'No tengo fuentes recuperadas. Usa /search <tema> para buscar en bases académicas reales.' "
+    "Incumplir esta norma es más grave que no responder; "
     "(4) si la evidencia disponible es insuficiente para responder con confianza, dilo; "
     "(5) presenta activamente evidencia contraria o matices que cuestionen la dirección de la consulta; "
     "(6) calibra la certeza: usa 'sugiere', 'es consistente con', 'habría que verificar' según corresponda, nunca afirmes más de lo que los datos permiten."
@@ -59,7 +62,24 @@ def build_system_prompt(state: SessionState) -> str:
     return base
 
 
+_SEARCH_INTENT_PHRASES = (
+    "necesito estudios", "busca estudios", "busca artículos", "busca fuentes",
+    "referencias", "bibliografía", "fuentes sobre", "literatura sobre",
+    "investiga sobre", "encuentra artículos", "sí, por favor", "sí claro",
+    "hazlo", "procede", "búscalo", "búscalos", "busca", "investiga",
+)
+
+
+def _has_search_intent(query: str) -> bool:
+    q = query.lower()
+    return any(phrase in q for phrase in _SEARCH_INTENT_PHRASES)
+
+
 def answer_session_query(state: SessionState, query: str) -> str:
+    # Auto-switch a modo search si el usuario expresa intención de búsqueda en modo general
+    if state.mode == "general" and _has_search_intent(query):
+        state.mode = "search"
+
     context_chunks = gather_context(state, query)
     web_results = gather_web_results(state, query)
     system_prompt = build_system_prompt(state)
@@ -148,17 +168,18 @@ def build_user_prompt(state: SessionState, query: str, chunks: list[tuple[str, s
     lines.append("")
     if web_results:
         lines.append(
-            "INSTRUCCIÓN: sintetiza la respuesta usando las fuentes recuperadas arriba. "
+            "INSTRUCCIÓN: sintetiza la respuesta usando ÚNICAMENTE las fuentes recuperadas arriba. "
             "Cita el título o URL de la fuente cuando hagas una afirmación específica. "
             "Si las fuentes no son suficientes para responder, dilo antes de completar con conocimiento general. "
-            "No inventes autores, años ni datos que no aparezcan en las fuentes recuperadas."
+            "PROHIBIDO: no inventes autores, años, títulos, DOIs ni URLs que no aparezcan literalmente en las fuentes recuperadas."
         )
     else:
         lines.append(
-            "INSTRUCCIÓN: no hay fuentes recuperadas en esta sesión. "
-            "Responde con conocimiento general pero márcalo explícitamente como tal. "
-            "No cites autores ni años específicos a menos que estés seguro de su existencia. "
-            "Si la respuesta requiere evidencia empírica, recomienda buscarla con /search."
+            "INSTRUCCIÓN CRÍTICA: no hay fuentes recuperadas en esta sesión. "
+            "ESTÁ TERMINANTEMENTE PROHIBIDO generar referencias bibliográficas, citas con autor/año, DOIs o URLs. "
+            "Si el usuario pide referencias, estudios, artículos o bibliografía, responde SOLO con: "
+            "'No tengo fuentes recuperadas en esta sesión. Usa /search <tu tema> para buscar en bases académicas reales.' "
+            "Puedes orientar conceptualmente sin citar fuentes específicas, pero NUNCA construyas una referencia."
         )
     return "\n".join(lines)
 
