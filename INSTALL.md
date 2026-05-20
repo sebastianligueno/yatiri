@@ -1,4 +1,4 @@
-# Instalación de Scholar CLI
+# Instalación de Yatiri
 
 Asistente académico de terminal para Psicología y Ciencias Sociales.  
 Funciona en **Windows, macOS y Linux** con Python 3.10 o superior.
@@ -8,6 +8,7 @@ Funciona en **Windows, macOS y Linux** con Python 3.10 o superior.
 ## Requisitos previos
 
 - Python 3.10+ instalado ([python.org](https://www.python.org/downloads/))
+- Git
 - Conexión a internet (para DeepSeek y búsquedas académicas)
 - Opcional: [Ollama](https://ollama.com) para modo local sin API
 
@@ -22,32 +23,18 @@ python3 --version     # macOS / Linux
 
 ## Instalación
 
-### Opción A — pipx (recomendado: entorno aislado, sin conflictos)
+### Desde el código fuente (recomendado)
 
 ```bash
-pip install pipx
-pipx install git+https://github.com/usuario/scholar-cli
-```
-
-### Opción B — uv (más rápido)
-
-```bash
-pip install uv
-uv tool install git+https://github.com/usuario/scholar-cli
-```
-
-### Opción C — pip directo
-
-```bash
-pip install git+https://github.com/usuario/scholar-cli
-```
-
-### Opción D — desde el código fuente (para desarrollo)
-
-```bash
-git clone https://github.com/usuario/scholar-cli
-cd scholar-cli
+git clone https://github.com/sebastianligueno/yatiri
+cd yatiri
 pip install -e .
+```
+
+### Desde GitHub directamente
+
+```bash
+pip install git+https://github.com/sebastianligueno/yatiri
 ```
 
 ---
@@ -57,10 +44,10 @@ pip install -e .
 Después de instalar, ejecuta el wizard de configuración:
 
 ```bash
-scholar setup
+yatiri setup
 ```
 
-Este comando es interactivo, guarda la clave en `~/.scholar_operator/config.yaml` y **no requiere modificar variables de entorno del sistema**.
+Este comando es interactivo, guarda la clave en `~/.yatiri/config.yaml` y **no requiere modificar variables de entorno del sistema**.
 
 ### Alternativa: variable de entorno
 
@@ -76,12 +63,6 @@ export DEEPSEEK_API_KEY="tu-clave-aqui"
 [System.Environment]::SetEnvironmentVariable("DEEPSEEK_API_KEY", "tu-clave-aqui", "User")
 ```
 
-**Windows (CMD)**:
-
-```cmd
-setx DEEPSEEK_API_KEY "tu-clave-aqui"
-```
-
 > La clave de DeepSeek se obtiene en [platform.deepseek.com/api_keys](https://platform.deepseek.com/api_keys).  
 > El modelo `deepseek-chat` tiene costo muy bajo (~$0.28/millón de tokens de entrada).
 
@@ -90,9 +71,9 @@ setx DEEPSEEK_API_KEY "tu-clave-aqui"
 ## Primer uso
 
 ```bash
-scholar            # abre sesión interactiva
-scholar setup      # configura API key y proveedor
-scholar init .     # inicializa workspace en el directorio actual
+yatiri            # abre sesión interactiva
+yatiri setup      # configura API key y proveedor
+yatiri init .     # inicializa workspace en el directorio actual
 ```
 
 Dentro de la sesión:
@@ -109,9 +90,9 @@ Dentro de la sesión:
 Modo no interactivo (scripts, terminales sin TTY):
 
 ```bash
-scholar chat "Diseña una clase sobre muestreo" --mode teach
-scholar chat "burnout docente" --mode search
-scholar chat "¿Qué dice el manuscrito?" --mode verify --attach ./mi_proyecto
+yatiri chat "Diseña una clase sobre muestreo" --mode teach
+yatiri chat "burnout docente" --mode search
+yatiri chat "¿Qué dice el manuscrito?" --mode verify --attach ./mi_proyecto
 ```
 
 ---
@@ -132,7 +113,7 @@ ollama pull llama3.2:3b     # opción alternativa
 3. Configurar:
 
 ```bash
-scholar setup
+yatiri setup
 # → Proveedor: ollama
 # → Modelo Ollama: gemma3:4b
 ```
@@ -151,7 +132,7 @@ export SCHOLAR_OLLAMA_MODEL=gemma3:4b
 Crear una carpeta de proyecto con estructura completa:
 
 ```bash
-scholar init mi_investigacion
+yatiri init mi_investigacion
 ```
 
 Esto genera:
@@ -169,35 +150,32 @@ mi_investigacion/
 └── README.md
 ```
 
-Luego dentro de Scholar:
-
-```
-/attach /ruta/a/mi_investigacion
-/verify ¿Qué afirmaciones necesitan respaldo?
-```
-
 ---
 
 ## Actualizar
 
 ```bash
-pipx upgrade scholar-cli                               # si usó pipx
-uv tool upgrade scholar-cli                            # si usó uv
-pip install --upgrade git+https://github.com/...       # si usó pip
+cd yatiri
+git pull
+pip install -e .
 ```
 
 ---
 
 ## Solución de problemas
 
-**`scholar: command not found`**  
-Asegurarse de que `~/.local/bin` (Linux/macOS) o el directorio de scripts de Python está en el PATH.
+**`yatiri: command not found`**  
+Asegurarse de que `~/.local/bin` (Linux/macOS) esté en el PATH. Agregar a `~/.bashrc`:
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
 
 **DeepSeek no responde / timeout**  
-Verificar clave con `scholar setup` → mostrar configuración actual. Revisar `scholar /doctor` dentro de la sesión.
+Verificar clave con `yatiri setup` → mostrar configuración actual. Revisar `yatiri /doctor` dentro de la sesión.
 
 **Ollama: 404 Not Found**  
-El daemon de Ollama no está corriendo. Ejecutar `ollama serve` en otra terminal antes de abrir Scholar.
+El daemon de Ollama no está corriendo. Ejecutar `ollama serve` en otra terminal antes de abrir Yatiri.
 
 **Windows: error de codificación**  
 Abrir terminal con `chcp 65001` para UTF-8, o usar Windows Terminal (no CMD clásico).

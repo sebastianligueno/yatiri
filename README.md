@@ -54,13 +54,6 @@ yatiri setup    # configura proveedor y región
 yatiri          # abre la sesión interactiva
 ```
 
-Con pipx (entorno aislado):
-
-```bash
-pipx install git+https://github.com/sebastianligueno/yatiri
-yatiri setup
-```
-
 ### Configuración rápida de clave
 
 ```bash
