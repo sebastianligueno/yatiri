@@ -95,11 +95,25 @@ def answer_session_query(state: SessionState, query: str) -> str:
         state.add_exchange(user_content, llm_result.content)
         response = llm_result.content
         if web_results:
-            response = response.rstrip() + "\n\nFuentes recuperadas:\n" + "\n".join(
-                f"- [{item.source_type}] {item.title}: {item.url}" for item in web_results[:8]
-            )
+            fuentes = _format_sources(web_results)
+            if fuentes:
+                response = response.rstrip() + "\n\n" + fuentes
         return response
     return fallback_response(state, query, context_chunks, web_results, llm_result.error)
+
+
+def _format_sources(results: list) -> str:
+    lines = ["─── Fuentes recuperadas ───"]
+    for r in results:
+        tag = getattr(r, "source_type", "web").upper()
+        title = getattr(r, "title", "(sin título)")
+        url = getattr(r, "url", "")
+        doi = getattr(r, "doi", None)
+        year = getattr(r, "year", None)
+        ref = doi if doi else url
+        year_str = f" ({year})" if year else ""
+        lines.append(f"[{tag}]{year_str} {title} — {ref}")
+    return "\n".join(lines)
 
 
 def gather_context(state: SessionState, query: str) -> list[tuple[str, str]]:
@@ -124,21 +138,65 @@ def gather_web_results(state: SessionState, query: str):
     if state.mode != "search":
         return []
     region = get_region()
-    results = []
-    # Fuentes iberoamericanas siempre presentes
-    results += search_scielo(query, max_results=3)
-    results += search_openalex(query, max_results=3)
-    # Semantic Scholar y PubMed: amplían cobertura global
-    results += search_semantic_scholar(query, max_results=3)
-    # PubMed: prioritario en regiones globales o cuando hay términos clínicos
-    if region.get("languages") and "en" in region["languages"] or _is_health_query(query):
-        results += search_pubmed(query, max_results=2)
-    # Fuentes europeas y asiáticas
-    results += search_hal(query, max_results=2)
-    results += search_jstage(query, max_results=2)
-    # Web general
-    results += search_web(query, max_results=3)
-    return results
+    raw: list = []
+    # Fuentes académicas primarias
+    raw += search_scielo(query, max_results=5)
+    raw += search_openalex(query, max_results=5)
+    raw += search_semantic_scholar(query, max_results=5)
+    # PubMed solo si la consulta tiene términos clínicos o de salud
+    if _is_health_query(query):
+        raw += search_pubmed(query, max_results=3)
+    # HAL solo si la región incluye Europa o idiomas franceses/europeos
+    langs = region.get("languages", [])
+    if "fr" in langs or "en" in langs:
+        raw += search_hal(query, max_results=2)
+    # J-STAGE solo si la región incluye Asia
+    if "ja" in langs or region.get("label", "").lower() in ("global", "asia"):
+        raw += search_jstage(query, max_results=2)
+    # Búsqueda web solo para fuentes institucionales (no académicas)
+    web = [r for r in search_web(query, max_results=6) if _decode_ddg_url(r)]
+    raw += [r for r in web if getattr(r, "source_type", "web") in ("institutional", "legal")]
+    # Filtrar por relevancia y deduplicar
+    tokens = tokenize(query)
+    relevant = [r for r in raw if _is_relevant(r, tokens)]
+    seen_titles: set[str] = set()
+    deduped: list = []
+    for r in relevant:
+        key = _title_key(getattr(r, "title", ""))
+        if key not in seen_titles:
+            seen_titles.add(key)
+            deduped.append(r)
+    return deduped
+
+
+def _is_relevant(result, tokens: list[str]) -> bool:
+    if not tokens:
+        return True
+    blob = (
+        getattr(result, "title", "") + " " +
+        getattr(result, "snippet", "") + " " +
+        getattr(result, "journal", "") + " " +
+        getattr(result, "url", "")
+    ).lower()
+    return any(token in blob for token in tokens)
+
+
+def _title_key(title: str) -> str:
+    return re.sub(r"\W+", "", title.lower())[:60]
+
+
+def _decode_ddg_url(result) -> bool:
+    """Decodifica URLs de redirección de DuckDuckGo in-place. Devuelve False si no recuperable."""
+    import urllib.parse
+    url = getattr(result, "url", "")
+    if "duckduckgo.com/l/" in url or url.startswith("//duckduckgo"):
+        parsed = urllib.parse.urlparse(url if url.startswith("http") else "https:" + url)
+        uddg = urllib.parse.parse_qs(parsed.query).get("uddg", [""])
+        if uddg and uddg[0]:
+            result.url = urllib.parse.unquote(uddg[0])
+            return True
+        return False
+    return True
 
 
 def _is_health_query(query: str) -> bool:
@@ -168,10 +226,18 @@ def build_user_prompt(state: SessionState, query: str, chunks: list[tuple[str, s
     lines.append("")
     if web_results:
         lines.append(
-            "INSTRUCCIÓN: sintetiza la respuesta usando ÚNICAMENTE las fuentes recuperadas arriba. "
-            "Cita el título o URL de la fuente cuando hagas una afirmación específica. "
-            "Si las fuentes no son suficientes para responder, dilo antes de completar con conocimiento general. "
-            "PROHIBIDO: no inventes autores, años, títulos, DOIs ni URLs que no aparezcan literalmente en las fuentes recuperadas."
+            "INSTRUCCIÓN DE SÍNTESIS ACADÉMICA:\n"
+            "Redacta una síntesis en prosa académica continua, NO en listas de bullets ni numeradas.\n"
+            "Estructura obligatoria:\n"
+            "1. Estado de la investigación: párrafos integrados que crucen y contrasten hallazgos entre fuentes. "
+            "Cada afirmación con soporte empírico debe llevar cita APA 7 inline: (Autor, Año) o "
+            "(Título abreviado, s.f.) si falta el autor. Señala convergencias y tensiones entre los estudios.\n"
+            "2. Vacíos y limitaciones: un párrafo que identifique qué aspectos del tema no cubren las fuentes recuperadas "
+            "y qué diseños, poblaciones o contextos están ausentes.\n"
+            "3. Referencias: al final, lista en APA 7 todas las fuentes citadas usando los metadatos disponibles "
+            "(título, fuente/journal, año, DOI o URL). Si falta autor, usa el título del recurso como entrada.\n"
+            "PROHIBICIÓN ABSOLUTA: no construyas datos (autores, años, DOIs, cifras) que no estén en las fuentes "
+            "recuperadas arriba. Si los metadatos son incompletos, di 's.a.' o 's.f.' pero no inventes."
         )
     else:
         lines.append(
