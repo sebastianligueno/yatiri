@@ -62,22 +62,26 @@ def build_system_prompt(state: SessionState) -> str:
     return base
 
 
-_SEARCH_INTENT_PHRASES = (
-    "necesito estudios", "busca estudios", "busca artículos", "busca fuentes",
-    "referencias", "bibliografía", "fuentes sobre", "literatura sobre",
-    "investiga sobre", "encuentra artículos", "sí, por favor", "sí claro",
-    "hazlo", "procede", "búscalo", "búscalos", "busca", "investiga",
+_META_PATTERNS = re.compile(
+    r"^(cómo|como|qué es|que es|cómo uso|para qué|para que|ayuda|help|"
+    r"qué hace|que hace|explícame|explicame yatiri|comandos|tutorial)",
+    re.IGNORECASE,
 )
 
 
-def _has_search_intent(query: str) -> bool:
-    q = query.lower()
-    return any(phrase in q for phrase in _SEARCH_INTENT_PHRASES)
+def _is_topic_query(query: str) -> bool:
+    """True si la consulta parece un tema académico, no una pregunta meta sobre yatiri."""
+    q = query.strip()
+    if len(q.split()) < 3:
+        return False
+    if _META_PATTERNS.match(q):
+        return False
+    return True
 
 
 def answer_session_query(state: SessionState, query: str) -> str:
-    # Auto-switch a modo search si el usuario expresa intención de búsqueda en modo general
-    if state.mode == "general" and _has_search_intent(query):
+    # En modo general, buscar siempre que la consulta sea un tema académico
+    if state.mode == "general" and _is_topic_query(query):
         state.mode = "search"
 
     context_chunks = gather_context(state, query)
@@ -227,24 +231,34 @@ def build_user_prompt(state: SessionState, query: str, chunks: list[tuple[str, s
         lines.append(f"- {label}: {text}")
     if web_results:
         lines.append("")
-        lines.append("Resultados web recuperados:")
+        lines.append("Fuentes académicas recuperadas (usa el contenido del abstract para la síntesis):")
         for item in web_results:
-            lines.append(f"- {item.source_type} | {item.title} | {item.url} | {item.snippet}")
+            authors = getattr(item, "authors", None) or ""
+            year = getattr(item, "year", None) or "s.f."
+            journal = getattr(item, "journal", None) or ""
+            doi = getattr(item, "doi", None) or getattr(item, "url", "")
+            snippet = getattr(item, "snippet", "") or ""
+            lines.append(
+                f"---\n"
+                f"Título: {item.title}\n"
+                f"Autores: {authors or 's.a.'} | Año: {year} | Fuente: {journal}\n"
+                f"DOI/URL: {doi}\n"
+                f"Abstract: {snippet}"
+            )
     lines.append("")
     if web_results:
         lines.append(
             "INSTRUCCIÓN DE SÍNTESIS ACADÉMICA:\n"
-            "Redacta una síntesis en prosa académica continua, NO en listas de bullets ni numeradas.\n"
+            "Redacta una síntesis en prosa académica continua. NO uses listas de bullets.\n"
             "Estructura obligatoria:\n"
-            "1. Estado de la investigación: párrafos integrados que crucen y contrasten hallazgos entre fuentes. "
-            "Cada afirmación con soporte empírico debe llevar cita APA 7 inline: (Autor, Año) o "
-            "(Título abreviado, s.f.) si falta el autor. Señala convergencias y tensiones entre los estudios.\n"
-            "2. Vacíos y limitaciones: un párrafo que identifique qué aspectos del tema no cubren las fuentes recuperadas "
-            "y qué diseños, poblaciones o contextos están ausentes.\n"
-            "3. Referencias: al final, lista en APA 7 todas las fuentes citadas usando los metadatos disponibles "
-            "(título, fuente/journal, año, DOI o URL). Si falta autor, usa el título del recurso como entrada.\n"
-            "PROHIBICIÓN ABSOLUTA: no construyas datos (autores, años, DOIs, cifras) que no estén en las fuentes "
-            "recuperadas arriba. Si los metadatos son incompletos, di 's.a.' o 's.f.' pero no inventes."
+            "1. Estado de la investigación: analiza el contenido de los abstracts — qué argumentan, "
+            "qué datos presentan, qué metodología usan. Cruza y contrasta hallazgos: dónde convergen, "
+            "dónde se contradicen o se complementan. Cada afirmación específica va con cita APA 7 inline "
+            "(Apellido, Año) usando los autores y años proporcionados. Si falta autor, usa (Título abreviado, año).\n"
+            "2. Vacíos: un párrafo sobre qué aspectos, poblaciones, diseños o periodos no cubren las fuentes.\n"
+            "3. Referencias: lista APA 7 completa al final con los metadatos entregados.\n"
+            "PROHIBICIÓN ABSOLUTA: no inventes autores, años, cifras ni DOIs. "
+            "Usa solo los metadatos entregados arriba. Si faltan, di 's.a.' o 's.f.'."
         )
     else:
         lines.append(

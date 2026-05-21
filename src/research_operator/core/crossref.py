@@ -12,6 +12,16 @@ except Exception:  # pragma: no cover
 _BASE = "https://api.crossref.org/works"
 _HEADERS = {"User-Agent": "YatiriCLI/0.3 (mailto:sebastianligueno@gmail.com; tool: yatiri academic assistant)"}
 
+# Títulos que son metadata de libros, no contenido académico
+_JUNK_TITLES = re.compile(
+    r"^(front matter|back matter|abreviaturas?|abreviaciones?|"
+    r"comité\s+(científico|editorial|organizador)|índice|"
+    r"acknowledgements?|agradecimientos?|preface|prefacio|"
+    r"table of contents?|contents?|copyright|contraportada|"
+    r"bibliografía$|references?$|notas?$|anexos?$|apéndice)$",
+    re.IGNORECASE,
+)
+
 
 @dataclass(slots=True)
 class CrossRefResult:
@@ -41,10 +51,18 @@ def search_crossref(query: str, max_results: int = 5) -> list[CrossRefResult]:
         return []
 
     results: list[CrossRefResult] = []
-    for item in items[:max_results]:
+    for item in items:
+        if len(results) >= max_results:
+            break
         title_list = item.get("title") or []
         title = title_list[0] if title_list else ""
         if not title:
+            continue
+        if _JUNK_TITLES.match(title.strip()):
+            continue
+        # Descartar capítulos sin abstract y con títulos muy cortos (probablemente metadata)
+        raw_abstract = item.get("abstract") or ""
+        if not raw_abstract and len(title.split()) < 4:
             continue
 
         doi = item.get("DOI") or None
@@ -58,7 +76,7 @@ def search_crossref(query: str, max_results: int = 5) -> list[CrossRefResult]:
         authors = _format_authors(item.get("author") or [])
 
         raw_abstract = item.get("abstract") or ""
-        snippet = _clean(raw_abstract)[:320]
+        snippet = _clean(raw_abstract)[:600]
 
         results.append(CrossRefResult(
             title=_clean(title),

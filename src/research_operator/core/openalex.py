@@ -102,7 +102,7 @@ def search_openalex(query: str, max_results: int = 5) -> list[OpenAlexResult]:
             OpenAlexResult(
                 title=title,
                 url=url,
-                snippet=snippet[:320],
+                snippet=snippet[:600],
                 doi=doi,
                 journal=journal,
                 year=year,
