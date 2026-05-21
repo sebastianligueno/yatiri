@@ -7,6 +7,7 @@ from research_operator.core.ask import extract_snippet
 from research_operator.core.config import get_region
 from research_operator.core.llm import active_provider_label, chat_completion, provider_diagnostics
 from research_operator.core.memory import load_memory_text
+from research_operator.core.crossref import search_crossref
 from research_operator.core.openalex import search_openalex
 from research_operator.core.profiles import infer_profile
 from research_operator.core.project import research_dir
@@ -14,7 +15,6 @@ from research_operator.core.hal import search_hal
 from research_operator.core.jstage import search_jstage
 from research_operator.core.pubmed import search_pubmed
 from research_operator.core.registry import read_jsonl_records
-from research_operator.core.scielo import search_scielo
 from research_operator.core.semantic_scholar import search_semantic_scholar
 from research_operator.core.session import ProjectBrief, SessionState
 from research_operator.core.web_search import search_web
@@ -107,12 +107,22 @@ def _format_sources(results: list) -> str:
     for r in results:
         tag = getattr(r, "source_type", "web").upper()
         title = getattr(r, "title", "(sin título)")
-        url = getattr(r, "url", "")
         doi = getattr(r, "doi", None)
+        url = getattr(r, "url", "")
         year = getattr(r, "year", None)
-        ref = doi if doi else url
-        year_str = f" ({year})" if year else ""
-        lines.append(f"[{tag}]{year_str} {title} — {ref}")
+        authors = getattr(r, "authors", None)
+        journal = getattr(r, "journal", None)
+        ref = f"https://doi.org/{doi}" if doi else url
+        parts = []
+        if authors:
+            parts.append(authors)
+        if year:
+            parts.append(f"({year})")
+        parts.append(title)
+        if journal:
+            parts.append(f"— {journal}")
+        parts.append(f"— {ref}")
+        lines.append(f"[{tag}] " + " ".join(parts))
     return "\n".join(lines)
 
 
@@ -139,21 +149,18 @@ def gather_web_results(state: SessionState, query: str):
         return []
     region = get_region()
     raw: list = []
-    # Fuentes académicas primarias
-    raw += search_scielo(query, max_results=5)
-    raw += search_openalex(query, max_results=5)
-    raw += search_semantic_scholar(query, max_results=5)
+    # Fuentes académicas abiertas iberoamericanas — APIs estables
+    raw += search_crossref(query, max_results=5)   # CrossRef: cobertura global con metadatos APA completos
+    raw += search_openalex(query, max_results=5)   # OpenAlex: filtrado por idioma español + país si aplica
+    raw += search_semantic_scholar(query, max_results=4)
     # PubMed solo si la consulta tiene términos clínicos o de salud
     if _is_health_query(query):
         raw += search_pubmed(query, max_results=3)
-    # HAL solo si la región incluye Europa o idiomas franceses/europeos
+    # HAL solo si la región incluye Europa
     langs = region.get("languages", [])
-    if "fr" in langs or "en" in langs:
+    if "fr" in langs:
         raw += search_hal(query, max_results=2)
-    # J-STAGE solo si la región incluye Asia
-    if "ja" in langs or region.get("label", "").lower() in ("global", "asia"):
-        raw += search_jstage(query, max_results=2)
-    # Búsqueda web solo para fuentes institucionales (no académicas)
+    # Búsqueda web solo para fuentes institucionales verificadas
     web = [r for r in search_web(query, max_results=6) if _decode_ddg_url(r)]
     raw += [r for r in web if getattr(r, "source_type", "web") in ("institutional", "legal")]
     # Filtrar por relevancia y deduplicar

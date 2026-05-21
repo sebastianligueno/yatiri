@@ -22,12 +22,34 @@ class OpenAlexResult:
     source_type: str = "academic"
 
 
+_COUNTRY_CODES: dict[str, str] = {
+    "chile": "CL", "chileno": "CL", "chilena": "CL", "chilenos": "CL",
+    "argentina": "AR", "argentino": "AR", "argentina": "AR",
+    "brasil": "BR", "brazil": "BR", "brasileño": "BR",
+    "colombia": "CO", "colombiano": "CO",
+    "méxico": "MX", "mexico": "MX", "mexicano": "MX",
+    "perú": "PE", "peru": "PE", "peruano": "PE",
+    "españa": "ES", "spain": "ES", "español": "ES",
+}
+
+
+def _build_filter(query: str) -> str:
+    filters = ["language:es"]
+    q_lower = query.lower()
+    for term, code in _COUNTRY_CODES.items():
+        if term in q_lower:
+            filters.append(f"institutions.country_code:{code}")
+            break
+    return ",".join(filters)
+
+
 def search_openalex(query: str, max_results: int = 5) -> list[OpenAlexResult]:
     if requests is None:
         return []
 
     params: dict = {
         "search": query,
+        "filter": _build_filter(query),
         "per-page": max_results,
         "select": "title,doi,publication_year,primary_location,open_access,abstract_inverted_index",
     }
@@ -46,6 +68,16 @@ def search_openalex(query: str, max_results: int = 5) -> list[OpenAlexResult]:
         data = response.json()
     except Exception:
         return []
+
+    # Si el filtro de país no devuelve resultados, reintentar solo con idioma
+    if not data.get("results") and "country_code" in params.get("filter", ""):
+        params["filter"] = "language:es"
+        try:
+            response = requests.get(OPENALEX_URL, params=params, headers={"User-Agent": "YatiriCLI/0.3"}, timeout=20)
+            response.raise_for_status()
+            data = response.json()
+        except Exception:
+            return []
 
     results: list[OpenAlexResult] = []
     for item in data.get("results", [])[:max_results]:
