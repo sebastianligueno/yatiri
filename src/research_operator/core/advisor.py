@@ -179,12 +179,12 @@ def gather_web_results(state: SessionState, query: str):
 def _is_relevant(result, tokens: list[str]) -> bool:
     if not tokens:
         return True
-    blob = (
-        getattr(result, "title", "") + " " +
-        getattr(result, "snippet", "") + " " +
-        getattr(result, "journal", "") + " " +
-        getattr(result, "url", "")
-    ).lower()
+    blob = " ".join(filter(None, [
+        getattr(result, "title", None) or "",
+        getattr(result, "snippet", None) or "",
+        getattr(result, "journal", None) or "",
+        getattr(result, "url", None) or "",
+    ])).lower()
     return any(token in blob for token in tokens)
 
 
