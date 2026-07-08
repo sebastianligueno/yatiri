@@ -19,6 +19,7 @@ class OpenAlexResult:
     doi: str | None
     journal: str | None
     year: str | None
+    authors: str | None = None
     source_type: str = "academic"
 
 
@@ -51,7 +52,7 @@ def search_openalex(query: str, max_results: int = 5) -> list[OpenAlexResult]:
         "search": query,
         "filter": _build_filter(query),
         "per-page": max_results,
-        "select": "title,doi,publication_year,primary_location,open_access,abstract_inverted_index",
+        "select": "title,doi,publication_year,primary_location,open_access,abstract_inverted_index,authorships",
     }
     email = os.environ.get("SCHOLAR_CONTACT_EMAIL", "")
     if email:
@@ -97,6 +98,7 @@ def search_openalex(query: str, max_results: int = 5) -> list[OpenAlexResult]:
         journal = source.get("display_name")
 
         snippet = _reconstruct_abstract(item.get("abstract_inverted_index"))
+        authors = _format_authors(item.get("authorships") or [])
 
         results.append(
             OpenAlexResult(
@@ -106,10 +108,26 @@ def search_openalex(query: str, max_results: int = 5) -> list[OpenAlexResult]:
                 doi=doi,
                 journal=journal,
                 year=year,
+                authors=authors,
             )
         )
 
     return results
+
+
+def _format_authors(authorships: list[dict]) -> str | None:
+    if not authorships:
+        return None
+    names = [
+        a["author"]["display_name"]
+        for a in authorships[:3]
+        if a.get("author", {}).get("display_name")
+    ]
+    if not names:
+        return None
+    if len(authorships) > 3:
+        names.append("et al.")
+    return "; ".join(names)
 
 
 def _reconstruct_abstract(inverted_index: dict | None) -> str:
