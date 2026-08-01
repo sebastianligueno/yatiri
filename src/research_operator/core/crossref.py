@@ -35,13 +35,26 @@ class CrossRefResult:
     source_type: str = "academic"
 
 
-def search_crossref(query: str, max_results: int = 5) -> list[CrossRefResult]:
+def search_crossref(
+    query: str,
+    max_results: int = 5,
+    year_from: int | None = None,
+    year_to: int | None = None,
+) -> list[CrossRefResult]:
     if requests is None:
         return []
+    params: dict = {"query": query, "rows": max_results}
+    filters = []
+    if year_from:
+        filters.append(f"from-pub-date:{year_from}-01-01")
+    if year_to:
+        filters.append(f"until-pub-date:{year_to}-12-31")
+    if filters:
+        params["filter"] = ",".join(filters)
     try:
         resp = requests.get(
             _BASE,
-            params={"query": query, "rows": max_results},
+            params=params,
             headers=_HEADERS,
             timeout=20,
         )

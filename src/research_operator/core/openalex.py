@@ -34,23 +34,40 @@ _COUNTRY_CODES: dict[str, str] = {
 }
 
 
-def _build_filter(query: str) -> str:
-    filters = ["language:es"]
+def _build_filter(
+    query: str,
+    language: str | None = "es",
+    year_from: int | None = None,
+    year_to: int | None = None,
+) -> str:
+    filters = []
+    if language:
+        filters.append(f"language:{language}")
     q_lower = query.lower()
     for term, code in _COUNTRY_CODES.items():
         if term in q_lower:
             filters.append(f"institutions.country_code:{code}")
             break
+    if year_from:
+        filters.append(f"from_publication_date:{year_from}-01-01")
+    if year_to:
+        filters.append(f"to_publication_date:{year_to}-12-31")
     return ",".join(filters)
 
 
-def search_openalex(query: str, max_results: int = 5) -> list[OpenAlexResult]:
+def search_openalex(
+    query: str,
+    max_results: int = 5,
+    language: str | None = "es",
+    year_from: int | None = None,
+    year_to: int | None = None,
+) -> list[OpenAlexResult]:
     if requests is None:
         return []
 
     params: dict = {
         "search": query,
-        "filter": _build_filter(query),
+        "filter": _build_filter(query, language=language, year_from=year_from, year_to=year_to),
         "per-page": max_results,
         "select": "title,doi,publication_year,primary_location,open_access,abstract_inverted_index,authorships",
     }
@@ -70,9 +87,9 @@ def search_openalex(query: str, max_results: int = 5) -> list[OpenAlexResult]:
     except Exception:
         return []
 
-    # Si el filtro de país no devuelve resultados, reintentar solo con idioma
+    # Si el filtro de país no devuelve resultados, reintentar sin el país
     if not data.get("results") and "country_code" in params.get("filter", ""):
-        params["filter"] = "language:es"
+        params["filter"] = _build_filter("", language=language, year_from=year_from, year_to=year_to)
         try:
             response = requests.get(OPENALEX_URL, params=params, headers={"User-Agent": "YatiriCLI/0.3"}, timeout=20)
             response.raise_for_status()

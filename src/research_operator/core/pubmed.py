@@ -20,20 +20,35 @@ class PubMedResult:
     year: int | None = None
 
 
-def search_pubmed(query: str, max_results: int = 3) -> list[PubMedResult]:
+def search_pubmed(
+    query: str,
+    max_results: int = 3,
+    year_from: int | None = None,
+    year_to: int | None = None,
+) -> list[PubMedResult]:
     if _requests is None:
         return []
-    ids = _esearch(query, max_results)
+    ids = _esearch(query, max_results, year_from=year_from, year_to=year_to)
     if not ids:
         return []
     return _esummary(ids)
 
 
-def _esearch(query: str, retmax: int) -> list[str]:
+def _esearch(
+    query: str,
+    retmax: int,
+    year_from: int | None = None,
+    year_to: int | None = None,
+) -> list[str]:
+    params = {"db": "pubmed", "term": query, "retmax": retmax, "retmode": "json"}
+    if year_from or year_to:
+        params["datetype"] = "pdat"
+        params["mindate"] = str(year_from) if year_from else "1900"
+        params["maxdate"] = str(year_to) if year_to else "3000"
     try:
         resp = _requests.get(
             f"{_BASE}/esearch.fcgi",
-            params={"db": "pubmed", "term": query, "retmax": retmax, "retmode": "json"},
+            params=params,
             headers=_HEADERS,
             timeout=8,
         )

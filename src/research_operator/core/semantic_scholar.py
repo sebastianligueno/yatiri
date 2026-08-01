@@ -22,13 +22,21 @@ class SemanticResult:
     citations: int | None = None
 
 
-def search_semantic_scholar(query: str, max_results: int = 4) -> list[SemanticResult]:
+def search_semantic_scholar(
+    query: str,
+    max_results: int = 4,
+    year_from: int | None = None,
+    year_to: int | None = None,
+) -> list[SemanticResult]:
     if _requests is None:
         return []
+    params: dict = {"query": query, "fields": _FIELDS, "limit": max_results}
+    if year_from or year_to:
+        params["year"] = f"{year_from or ''}-{year_to or ''}"
     try:
         resp = _requests.get(
             f"{_BASE}/paper/search",
-            params={"query": query, "fields": _FIELDS, "limit": max_results},
+            params=params,
             headers=_HEADERS,
             timeout=10,
         )
