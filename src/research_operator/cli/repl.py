@@ -4,6 +4,7 @@ from pathlib import Path
 import shlex
 
 from rich.console import Console
+from rich.markup import escape
 from rich.panel import Panel
 
 from research_operator.core.advisor import answer_session_query, review_project_brief
@@ -70,7 +71,7 @@ def start_repl() -> None:
             continue
 
         response = answer_session_query(state, user_input)
-        console.print(response)
+        console.print(response, markup=False)
         if state.mode == "search" and state.last_search_results:
             _show_library_matches(state, query=state.last_search_query)
 
@@ -127,7 +128,7 @@ def handle_slash_command(state: SessionState, raw: str) -> bool:
         state.mode = command[1:]
         query = " ".join(args)
         if query:
-            console.print(answer_session_query(state, query))
+            console.print(answer_session_query(state, query), markup=False)
             if command == "/search" and state.last_search_results:
                 _show_library_matches(state, query=state.last_search_query)
         else:
@@ -144,7 +145,7 @@ def handle_slash_command(state: SessionState, raw: str) -> bool:
         return False
     if command == "/review":
         console.print("[bold]Revisión crítica del proyecto...[/bold]")
-        console.print(review_project_brief(state))
+        console.print(review_project_brief(state), markup=False)
         return False
     if command == "/attach":
         if not args:
@@ -262,17 +263,18 @@ def _show_library_matches(state: SessionState, query: str = "") -> None:
     if found_in_lib:
         lines.append(f"[green]Coincidencia exacta ({len(found_in_lib)}):[/green]")
         for result, entry in found_in_lib:
-            lines.append(f"  ✓ [{entry.key}]  {getattr(result, 'title', '')[:65]}")
+            title = escape(getattr(result, "title", "")[:65])
+            lines.append(f"  ✓ {escape('[' + entry.key + ']')}  {title}")
 
     if local_hits:
         lines.append(f"[cyan]Ya tienes sobre este tema ({len(local_hits)}):[/cyan]")
         for entry in local_hits:
-            lines.append(f"  ◆ [{entry.key}]  {entry.short_ref()}")
+            lines.append(f"  ◆ {escape('[' + entry.key + ']')}  {escape(entry.short_ref())}")
 
     if not_in_lib:
         lines.append(f"[yellow]No están en tu biblioteca ({len(not_in_lib)}):[/yellow]")
         for result in not_in_lib[:5]:
-            lines.append(f"  – {getattr(result, 'title', '')[:65]}")
+            lines.append(f"  – {escape(getattr(result, 'title', '')[:65])}")
 
     console.print("\n".join(lines))
 
