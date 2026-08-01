@@ -7,8 +7,8 @@ Responde en XML (Atom/OpenSearch).
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
 import xml.etree.ElementTree as ET
+from dataclasses import dataclass
 
 try:
     import requests as _requests

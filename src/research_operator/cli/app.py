@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
 import sys
+from pathlib import Path
 
 from research_operator.cli.ask import run_ask
 from research_operator.cli.init import run_init

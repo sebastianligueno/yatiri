@@ -6,11 +6,9 @@ stdin real ni la configuración del usuario que corre los tests.
 """
 from __future__ import annotations
 
-from itertools import chain
-
 import research_operator.core.config as config_mod
-from research_operator.core.config import REGIONS, get_config
 from research_operator.cli import setup as setup_mod
+from research_operator.core.config import get_config
 
 
 def _isolate_config_file(tmp_path, monkeypatch):

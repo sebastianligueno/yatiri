@@ -134,11 +134,11 @@ class TestSynthesizeIntro:
 class TestModeResponse:
     def test_modo_teach_delega_a_teach_response(self):
         lines = mode_response("teach", "clase sobre atención")
-        assert any("Aprendizaje esperado" in l for l in lines)
+        assert any("Aprendizaje esperado" in line for line in lines)
 
     def test_modo_general_da_sugerencia_generica(self):
         lines = mode_response("general", "algo")
-        assert any("Sugerencia" in l for l in lines)
+        assert any("Sugerencia" in line for line in lines)
 
 
 class TestRankAttachedSources:

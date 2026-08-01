@@ -10,7 +10,7 @@ from research_operator.mcp_server import _dedupe_key, _normalize_doi, _normalize
 
 class TestNormalizeDoi:
     def test_none_devuelve_none(self):
-        assert _normalize_doi(None) == None
+        assert _normalize_doi(None) is None
 
     def test_minusculas_y_sin_barra_final(self):
         assert _normalize_doi("10.1234/ABC/") == "10.1234/abc"

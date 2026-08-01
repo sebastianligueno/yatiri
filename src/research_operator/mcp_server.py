@@ -33,13 +33,13 @@ except ImportError:
 from mcp.server.fastmcp import FastMCP
 
 from research_operator.core.crossref import search_crossref
-from research_operator.core.openalex import search_openalex
-from research_operator.core.pubmed import search_pubmed
 from research_operator.core.hal import search_hal
 from research_operator.core.jstage import search_jstage
-from research_operator.core.semantic_scholar import search_semantic_scholar
-from research_operator.core.scielo import search_scielo
 from research_operator.core.logging_config import get_logger
+from research_operator.core.openalex import search_openalex
+from research_operator.core.pubmed import search_pubmed
+from research_operator.core.scielo import search_scielo
+from research_operator.core.semantic_scholar import search_semantic_scholar
 
 _logger = get_logger(__name__)
 

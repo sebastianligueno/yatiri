@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from pathlib import Path
 import re
+from pathlib import Path
 
+from research_operator.core.logging_config import get_logger
 from research_operator.core.project import load_project_config, research_dir
 from research_operator.core.registry import read_jsonl_records
-from research_operator.core.logging_config import get_logger
 
 _logger = get_logger(__name__)
 

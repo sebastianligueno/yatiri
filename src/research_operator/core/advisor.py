@@ -1,24 +1,23 @@
 from __future__ import annotations
 
-from pathlib import Path
 import re
+from pathlib import Path
 
 from research_operator.core.ask import extract_snippet
 from research_operator.core.config import get_region
-from research_operator.core.llm import active_provider_label, chat_completion, provider_diagnostics
-from research_operator.core.memory import load_memory_text
 from research_operator.core.crossref import search_crossref
+from research_operator.core.hal import search_hal
+from research_operator.core.llm import active_provider_label, chat_completion
+from research_operator.core.logging_config import get_logger
+from research_operator.core.memory import load_memory_text
 from research_operator.core.openalex import search_openalex
 from research_operator.core.profiles import infer_profile
 from research_operator.core.project import research_dir
-from research_operator.core.hal import search_hal
-from research_operator.core.jstage import search_jstage
 from research_operator.core.pubmed import search_pubmed
 from research_operator.core.registry import read_jsonl_records
 from research_operator.core.semantic_scholar import search_semantic_scholar
-from research_operator.core.session import ProjectBrief, SessionState
+from research_operator.core.session import SessionState
 from research_operator.core.web_search import search_web
-from research_operator.core.logging_config import get_logger
 
 _logger = get_logger(__name__)
 

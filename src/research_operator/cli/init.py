@@ -4,7 +4,6 @@ from pathlib import Path
 
 from research_operator.core.project import ensure_research_layout, init_project_config
 
-
 _WORKSPACE_DIRS = [
     "data/raw",
     "data/processed",

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import os
+from dataclasses import dataclass
 
 try:
     import requests
@@ -29,7 +29,7 @@ class OpenAlexResult:
 
 _COUNTRY_CODES: dict[str, str] = {
     "chile": "CL", "chileno": "CL", "chilena": "CL", "chilenos": "CL",
-    "argentina": "AR", "argentino": "AR", "argentina": "AR",
+    "argentina": "AR", "argentino": "AR", "argentinos": "AR",
     "brasil": "BR", "brazil": "BR", "brasileño": "BR",
     "colombia": "CO", "colombiano": "CO",
     "méxico": "MX", "mexico": "MX", "mexicano": "MX",

@@ -1,14 +1,13 @@
 from __future__ import annotations
 
-from pathlib import Path
 import re
+from pathlib import Path
 
 import yaml
 
 from research_operator.core.models import CheckResult, ProjectState
 from research_operator.core.profiles import load_profile, run_profile_checks
 from research_operator.core.registry import count_jsonl_records
-
 
 RESEARCH_DIRNAME = ".research"
 

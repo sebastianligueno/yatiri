@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from datetime import datetime
-from pathlib import Path
 import shlex
 import subprocess
+from datetime import datetime
+from pathlib import Path
 
 from research_operator.core.project import load_project_config, research_dir
 from research_operator.core.registry import append_jsonl

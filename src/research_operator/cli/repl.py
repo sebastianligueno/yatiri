@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from pathlib import Path
 import shlex
+from pathlib import Path
 
 from rich.console import Console
 from rich.markup import escape
@@ -11,15 +11,13 @@ from research_operator.core.advisor import answer_session_query, review_project_
 from research_operator.core.bibtex_search import find_in_library, search_local_library
 from research_operator.core.config import get_config
 from research_operator.core.export_md import export_results_to_md
-from research_operator.core.llm import estimate_cost
-from research_operator.core.vault_export import export_to_vault, get_vault_folders
-from research_operator.core.academic_stack import render_stack_report
-from research_operator.core.llm import active_provider_label, provider_diagnostics
+from research_operator.core.llm import active_provider_label, estimate_cost, provider_diagnostics
 from research_operator.core.mcp_detect import render_mcp_report
 from research_operator.core.memory import list_memories
 from research_operator.core.project import ensure_research_layout, init_project_config, research_dir
-from research_operator.core.session import ProjectBrief, SessionState
 from research_operator.core.scanner import scan_project
+from research_operator.core.session import SessionState
+from research_operator.core.vault_export import export_to_vault, get_vault_folders
 
 try:
     from prompt_toolkit import PromptSession
