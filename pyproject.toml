@@ -7,7 +7,7 @@ name = "yatiri"
 version = "0.3.0"
 description = "Yatiri — Asistente académico de terminal para investigación en Iberoamérica"
 readme = "README.md"
-license = { text = "MIT" }
+license = { text = "CC-BY-NC-SA-4.0" }
 requires-python = ">=3.10"
 keywords = ["research", "academia", "psychology", "social-sciences", "cli", "ai", "iberoamerica", "latam", "spanish"]
 classifiers = [
@@ -15,7 +15,7 @@ classifiers = [
   "Environment :: Console",
   "Intended Audience :: Science/Research",
   "Intended Audience :: Education",
-  "License :: OSI Approved :: MIT License",
+  "License :: Free for non-commercial use",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.10",
