@@ -49,6 +49,54 @@ class TestEstimateCost:
         assert estimate_cost("ollama", 1_000_000, 1_000_000) == 0.0
 
 
+class TestCallProviderDispatch:
+    def test_deepseek_delega_a_openai_compat(self, tmp_path, monkeypatch):
+        _isolate_config(tmp_path, monkeypatch)
+        with patch("research_operator.core.llm._openai_compat") as mock_compat:
+            mock_compat.return_value = ChatResult(content="ok", provider="deepseek")
+            _call_provider("deepseek", "sys", [])
+            assert mock_compat.call_args.kwargs["provider_name"] == "deepseek"
+
+    def test_openai_delega_a_openai_compat(self, tmp_path, monkeypatch):
+        _isolate_config(tmp_path, monkeypatch)
+        with patch("research_operator.core.llm._openai_compat") as mock_compat:
+            mock_compat.return_value = ChatResult(content="ok", provider="openai")
+            _call_provider("openai", "sys", [])
+            assert mock_compat.call_args.kwargs["provider_name"] == "openai"
+
+    def test_openrouter_usa_headers_y_modelo_por_defecto(self, tmp_path, monkeypatch):
+        _isolate_config(tmp_path, monkeypatch)
+        with patch("research_operator.core.llm._openai_compat") as mock_compat:
+            mock_compat.return_value = ChatResult(content="ok", provider="openrouter")
+            _call_provider("openrouter", "sys", [])
+            kwargs = mock_compat.call_args.kwargs
+            assert kwargs["model"] == "deepseek/deepseek-chat"
+            assert "HTTP-Referer" in kwargs["extra_headers"]
+
+    def test_groq_delega_a_openai_compat(self, tmp_path, monkeypatch):
+        _isolate_config(tmp_path, monkeypatch)
+        with patch("research_operator.core.llm._openai_compat") as mock_compat:
+            mock_compat.return_value = ChatResult(content="ok", provider="groq")
+            _call_provider("groq", "sys", [])
+            assert mock_compat.call_args.kwargs["provider_name"] == "groq"
+
+    def test_anthropic_delega_a_anthropic_chat(self, tmp_path, monkeypatch):
+        _isolate_config(tmp_path, monkeypatch)
+        with patch("research_operator.core.llm._anthropic_chat") as mock_anthropic:
+            mock_anthropic.return_value = ChatResult(content="ok", provider="anthropic")
+            result = _call_provider("anthropic", "sys", [])
+            mock_anthropic.assert_called_once_with("sys", [])
+            assert result.content == "ok"
+
+    def test_deepseek_con_thinking_mode_agrega_extra_payload(self, tmp_path, monkeypatch):
+        _isolate_config(tmp_path, monkeypatch)
+        monkeypatch.setenv("DEEPSEEK_THINKING_MODE", "enabled")
+        with patch("research_operator.core.llm._openai_compat") as mock_compat:
+            mock_compat.return_value = ChatResult(content="ok", provider="deepseek")
+            _call_provider("deepseek", "sys", [])
+            assert mock_compat.call_args.kwargs["extra_payload"] == {"thinking": {"type": "enabled"}}
+
+
 class TestOpenaiCompat:
     def test_sin_requests_instalado(self, tmp_path, monkeypatch):
         _isolate_config(tmp_path, monkeypatch)
@@ -91,13 +139,45 @@ class TestOpenaiCompat:
             assert result.content is None
             assert "sin red" in result.error
 
+    def test_extra_payload_y_extra_headers_se_incluyen(self, tmp_path, monkeypatch):
+        _isolate_config(tmp_path, monkeypatch)
+        with patch("research_operator.core.llm.requests") as mock_requests:
+            mock_requests.post.return_value = _mock_response({
+                "choices": [{"message": {"content": "ok"}}], "usage": {},
+            })
+            _openai_compat(
+                "sys", [], "https://x", "clave", "modelo", "openrouter",
+                extra_payload={"thinking": {"type": "enabled"}},
+                extra_headers={"X-Title": "Yatiri"},
+            )
+            payload = mock_requests.post.call_args.kwargs["json"]
+            headers = mock_requests.post.call_args.kwargs["headers"]
+            assert payload["thinking"] == {"type": "enabled"}
+            assert headers["X-Title"] == "Yatiri"
+
 
 class TestAnthropicChat:
+    def test_sin_requests_instalado(self, tmp_path, monkeypatch):
+        _isolate_config(tmp_path, monkeypatch)
+        with patch("research_operator.core.llm.requests", None):
+            result = _anthropic_chat("sys", [])
+            assert result.content is None
+            assert "requests no instalado" in result.error
+
     def test_sin_api_key(self, tmp_path, monkeypatch):
         _isolate_config(tmp_path, monkeypatch)
         result = _anthropic_chat("sys", [])
         assert result.content is None
         assert "sin clave" in result.error
+
+    def test_error_de_red(self, tmp_path, monkeypatch):
+        _isolate_config(tmp_path, monkeypatch)
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+        with patch("research_operator.core.llm.requests") as mock_requests:
+            mock_requests.post.side_effect = TimeoutError("timeout")
+            result = _anthropic_chat("sys", [])
+            assert result.content is None
+            assert "timeout" in result.error
 
     def test_respuesta_exitosa_concatena_bloques_de_texto(self, tmp_path, monkeypatch):
         _isolate_config(tmp_path, monkeypatch)
@@ -113,6 +193,13 @@ class TestAnthropicChat:
 
 
 class TestOllamaChat:
+    def test_sin_requests_instalado(self, tmp_path, monkeypatch):
+        _isolate_config(tmp_path, monkeypatch)
+        with patch("research_operator.core.llm.requests", None):
+            result = _ollama_chat("sys", [])
+            assert result.content is None
+            assert "requests no instalado" in result.error
+
     def test_respuesta_exitosa(self, tmp_path, monkeypatch):
         _isolate_config(tmp_path, monkeypatch)
         with patch("research_operator.core.llm.requests") as mock_requests:

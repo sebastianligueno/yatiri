@@ -271,3 +271,123 @@ class TestRunBriefForm:
         assert state.brief.paradigm == "cualitativo"
         assert state.brief.phenomenon == "convivencia escolar"
         assert "Ficha guardada" in capsys.readouterr().out
+
+
+class TestBuildPromptSession:
+    def test_crea_directorio_de_historial_y_devuelve_sesion(self, tmp_path, monkeypatch):
+        fake_home = tmp_path / "home"
+        monkeypatch.setattr(repl_mod.Path, "home", classmethod(lambda cls: fake_home))
+        session = repl_mod.build_prompt_session()
+        assert (fake_home / ".yatiri").is_dir()
+        assert session is not None
+
+    def test_oserror_al_crear_directorio_cae_a_tmp(self, monkeypatch):
+        monkeypatch.setattr(repl_mod.Path, "home", classmethod(lambda cls: Path("/raiz-sin-permiso")))
+        monkeypatch.setattr(
+            repl_mod.Path, "mkdir",
+            lambda self, *a, **k: (_ for _ in ()).throw(OSError("sin permiso")),
+        )
+        session = repl_mod.build_prompt_session()
+        assert session is not None
+
+    def test_sin_prompt_toolkit_devuelve_none(self, tmp_path, monkeypatch):
+        fake_home = tmp_path / "home"
+        monkeypatch.setattr(repl_mod.Path, "home", classmethod(lambda cls: fake_home))
+        monkeypatch.setattr(repl_mod, "PromptSession", None)
+        assert repl_mod.build_prompt_session() is None
+
+
+class TestStartRepl:
+    def test_eof_inmediato_termina_sin_mostrar_costo(self, monkeypatch, capsys):
+        monkeypatch.setattr(repl_mod, "build_prompt_session", lambda: None)
+        monkeypatch.setattr(repl_mod, "read_input", MagicMock(side_effect=EOFError()))
+        repl_mod.start_repl()
+        out = capsys.readouterr().out
+        assert "Sesión terminada." in out
+        assert "Sin uso registrado" not in out
+        assert "Costo estimado" not in out
+
+    def test_keyboard_interrupt_con_uso_muestra_costo(self, monkeypatch, capsys):
+        monkeypatch.setattr(repl_mod, "build_prompt_session", lambda: None)
+        monkeypatch.setattr(
+            repl_mod, "read_input", MagicMock(side_effect=["consulta", KeyboardInterrupt()])
+        )
+
+        def _fake_answer(state, query):
+            state.record_usage("deepseek", 10, 5)
+            return "respuesta"
+
+        monkeypatch.setattr(repl_mod, "answer_session_query", _fake_answer)
+        repl_mod.start_repl()
+        out = capsys.readouterr().out
+        assert "Sesión terminada." in out
+        assert "Costo estimado" in out
+
+    def test_input_vacio_continua_el_loop(self, monkeypatch, capsys):
+        monkeypatch.setattr(repl_mod, "build_prompt_session", lambda: None)
+        monkeypatch.setattr(repl_mod, "read_input", MagicMock(side_effect=["", EOFError()]))
+        repl_mod.start_repl()
+        assert "Sesión terminada." in capsys.readouterr().out
+
+    def test_comando_slash_que_sale_termina_el_loop(self, monkeypatch, capsys):
+        monkeypatch.setattr(repl_mod, "build_prompt_session", lambda: None)
+        monkeypatch.setattr(repl_mod, "read_input", MagicMock(return_value="/exit"))
+        repl_mod.start_repl()
+        assert "Sesión terminada." not in capsys.readouterr().out
+
+    def test_comando_slash_que_no_sale_continua_el_loop(self, monkeypatch, capsys):
+        monkeypatch.setattr(repl_mod, "build_prompt_session", lambda: None)
+        monkeypatch.setattr(
+            repl_mod, "read_input", MagicMock(side_effect=["/provider", EOFError()])
+        )
+        monkeypatch.setattr(repl_mod, "active_provider_label", lambda: "provider=deepseek")
+        repl_mod.start_repl()
+        out = capsys.readouterr().out
+        assert "provider=deepseek" in out
+        assert "Sesión terminada." in out
+
+    def test_consulta_normal_llama_answer_session_query(self, monkeypatch, capsys):
+        monkeypatch.setattr(repl_mod, "build_prompt_session", lambda: None)
+        monkeypatch.setattr(
+            repl_mod, "read_input", MagicMock(side_effect=["convivencia escolar", EOFError()])
+        )
+        mock_answer = MagicMock(return_value="síntesis académica")
+        monkeypatch.setattr(repl_mod, "answer_session_query", mock_answer)
+        repl_mod.start_repl()
+        out = capsys.readouterr().out
+        mock_answer.assert_called_once()
+        assert "síntesis académica" in out
+
+    def test_modo_search_con_resultados_muestra_biblioteca(self, monkeypatch, capsys):
+        monkeypatch.setattr(repl_mod, "build_prompt_session", lambda: None)
+        monkeypatch.setattr(
+            repl_mod, "read_input", MagicMock(side_effect=["convivencia escolar", EOFError()])
+        )
+
+        def _fake_answer(state, query):
+            state.mode = "search"
+            state.last_search_results = [_FakeResult(title="Un paper")]
+            state.last_search_query = query
+            return "síntesis"
+
+        monkeypatch.setattr(repl_mod, "answer_session_query", _fake_answer)
+        mock_library = MagicMock()
+        monkeypatch.setattr(repl_mod, "_show_library_matches", mock_library)
+        repl_mod.start_repl()
+        mock_library.assert_called_once()
+
+    def test_modo_search_sin_resultados_no_muestra_biblioteca(self, monkeypatch, capsys):
+        monkeypatch.setattr(repl_mod, "build_prompt_session", lambda: None)
+        monkeypatch.setattr(
+            repl_mod, "read_input", MagicMock(side_effect=["convivencia escolar", EOFError()])
+        )
+
+        def _fake_answer(state, query):
+            state.mode = "search"
+            return "síntesis sin fuentes"
+
+        monkeypatch.setattr(repl_mod, "answer_session_query", _fake_answer)
+        mock_library = MagicMock()
+        monkeypatch.setattr(repl_mod, "_show_library_matches", mock_library)
+        repl_mod.start_repl()
+        mock_library.assert_not_called()

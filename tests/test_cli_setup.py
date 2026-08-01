@@ -64,6 +64,23 @@ class TestConfigureApiKey:
         setup_mod._configure_api_key("deepseek")
         assert get_config("DEEPSEEK_API_KEY") == "clave-original"
 
+    def test_clave_existente_se_reemplaza_si_usuario_dice_si(self, tmp_path, monkeypatch):
+        _isolate_config_file(tmp_path, monkeypatch)
+        from research_operator.core.config import save_config
+        save_config("DEEPSEEK_API_KEY", "clave-vieja")
+        monkeypatch.setattr("getpass.getpass", lambda *a, **k: "clave-nueva-1234")
+        _feed_inputs(monkeypatch, ["s", ""])  # ¿Reemplazar? sí; luego modelo default
+        setup_mod._configure_api_key("deepseek")
+        assert get_config("DEEPSEEK_API_KEY") == "clave-nueva-1234"
+
+    def test_openai_con_base_url_personalizada(self, tmp_path, monkeypatch):
+        _isolate_config_file(tmp_path, monkeypatch)
+        monkeypatch.setattr("getpass.getpass", lambda *a, **k: "sk-test-1234567890")
+        _feed_inputs(monkeypatch, ["", "https://mi-api-compatible.local/v1"])
+        setup_mod._configure_api_key("openai")
+        assert get_config("OPENAI_BASE_URL") == "https://mi-api-compatible.local/v1"
+
+
 
 class TestConfigureOllama:
     def test_guarda_url_y_modelo(self, tmp_path, monkeypatch):
@@ -106,6 +123,13 @@ class TestConfigureLocal:
         setup_mod._configure_local()
         assert get_config("YATIRI_VAULT_PATH") == ""
 
+    def test_bibtex_inexistente_no_guarda(self, tmp_path, monkeypatch, capsys):
+        _isolate_config_file(tmp_path, monkeypatch)
+        _feed_inputs(monkeypatch, ["", str(tmp_path / "no-existe.bib")])
+        setup_mod._configure_local()
+        assert get_config("YATIRI_BIBTEX_PATH") == ""
+        assert "Archivo no encontrado" in capsys.readouterr().out
+
 
 class TestClearConfig:
     def test_confirmar_borra_todo(self, tmp_path, monkeypatch):
@@ -134,6 +158,15 @@ class TestShowCurrentAndRunSetup:
         # No debe lanzar excepción; algo se imprime (tabla rich o fallback texto)
         assert capsys.readouterr().out != "" or True
 
+    def test_show_current_cae_a_texto_plano_si_tabla_falla(self, tmp_path, monkeypatch, capsys):
+        _isolate_config_file(tmp_path, monkeypatch)
+        monkeypatch.setattr(
+            setup_mod, "Table", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("boom"))
+        )
+        setup_mod._show_current()
+        out = capsys.readouterr().out
+        assert "provider" in out
+
     def test_run_setup_opcion_salir_no_cambia_nada(self, tmp_path, monkeypatch, capsys):
         _isolate_config_file(tmp_path, monkeypatch)
         _feed_inputs(monkeypatch, ["11"])
@@ -146,3 +179,29 @@ class TestShowCurrentAndRunSetup:
         _feed_inputs(monkeypatch, ["1", "openai"])
         setup_mod.run_setup()
         assert get_config("SCHOLAR_MODEL_PROVIDER") == "openai"
+
+
+class TestAskHelpers:
+    def test_ask_eof_devuelve_default(self, monkeypatch):
+        def _raise(*a, **k):
+            raise EOFError()
+        monkeypatch.setattr("builtins.input", _raise)
+        assert setup_mod._ask("Prompt", default="valor-por-defecto") == "valor-por-defecto"
+
+    def test_ask_keyboard_interrupt_devuelve_default(self, monkeypatch):
+        def _raise(*a, **k):
+            raise KeyboardInterrupt()
+        monkeypatch.setattr("builtins.input", _raise)
+        assert setup_mod._ask("Prompt", default="valor-por-defecto") == "valor-por-defecto"
+
+    def test_ask_secret_eof_devuelve_vacio(self, monkeypatch):
+        def _raise(*a, **k):
+            raise EOFError()
+        monkeypatch.setattr("getpass.getpass", _raise)
+        assert setup_mod._ask_secret("Clave") == ""
+
+    def test_ask_secret_keyboard_interrupt_devuelve_vacio(self, monkeypatch):
+        def _raise(*a, **k):
+            raise KeyboardInterrupt()
+        monkeypatch.setattr("getpass.getpass", _raise)
+        assert setup_mod._ask_secret("Clave") == ""

@@ -8,7 +8,7 @@ try:
     _console = Console()
     def _print(msg: str) -> None:
         _console.print(msg)
-except Exception:
+except Exception:  # pragma: no cover
     _console = None
     def _print(msg: str) -> None:
         print(msg)
