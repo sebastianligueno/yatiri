@@ -56,7 +56,10 @@ def search_hal(query: str, max_results: int = 3) -> list[HALResult]:
     results = []
     for doc in docs:
         title_raw = doc.get("title_s") or []
-        title = title_raw[0] if isinstance(title_raw, list) else str(title_raw)
+        if isinstance(title_raw, list):
+            title = title_raw[0] if title_raw else ""
+        else:
+            title = str(title_raw)
         if not title:
             continue
         url = doc.get("uri_s", "")

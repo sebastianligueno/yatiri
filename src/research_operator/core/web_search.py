@@ -75,6 +75,8 @@ def clean_html(raw: str) -> str:
 
 
 def extract_domain(url: str) -> str:
+    if not url:
+        return ""
     try:
         return urlparse(url).netloc.lower()
     except Exception as exc:
