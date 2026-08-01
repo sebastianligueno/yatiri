@@ -7,6 +7,10 @@ try:
 except ImportError:
     _requests = None
 
+from research_operator.core.logging_config import get_logger
+
+_logger = get_logger(__name__)
+
 _BASE = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
 _HEADERS = {"User-Agent": "YatiriCLI/0.3 (research tool; contact: yatiri-bot)"}
 
@@ -54,7 +58,8 @@ def _esearch(
         )
         resp.raise_for_status()
         return resp.json().get("esearchresult", {}).get("idlist", [])
-    except Exception:
+    except Exception as exc:
+        _logger.warning("PubMed esearch falló para %r: %s: %s", query, type(exc).__name__, exc)
         return []
 
 
@@ -68,7 +73,8 @@ def _esummary(ids: list[str]) -> list[PubMedResult]:
         )
         resp.raise_for_status()
         result_data = resp.json().get("result", {})
-    except Exception:
+    except Exception as exc:
+        _logger.warning("PubMed esummary falló: %s: %s", type(exc).__name__, exc)
         return []
 
     results = []

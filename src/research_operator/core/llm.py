@@ -4,6 +4,9 @@ from dataclasses import dataclass
 
 from research_operator.core.academic_stack import render_stack_report
 from research_operator.core.config import get_config
+from research_operator.core.logging_config import get_logger
+
+_logger = get_logger(__name__)
 
 try:
     import requests
@@ -161,6 +164,7 @@ def _openai_compat(
             output_tokens=usage.get("completion_tokens", 0),
         )
     except Exception as exc:
+        _logger.debug("Proveedor %s falló: %s: %s", provider_name, type(exc).__name__, exc)
         return ChatResult(content=None, provider=provider_name, error=str(exc))
 
 
@@ -201,6 +205,7 @@ def _anthropic_chat(system_prompt: str, messages: list[dict]) -> ChatResult:
             output_tokens=usage.get("output_tokens", 0),
         )
     except Exception as exc:
+        _logger.debug("Proveedor anthropic falló: %s: %s", type(exc).__name__, exc)
         return ChatResult(content=None, provider="anthropic", error=str(exc))
 
 
@@ -223,6 +228,7 @@ def _ollama_chat(system_prompt: str, messages: list[dict]) -> ChatResult:
             provider="ollama",
         )
     except Exception as exc:
+        _logger.debug("Proveedor ollama falló: %s: %s", type(exc).__name__, exc)
         return ChatResult(content=None, provider="ollama", error=str(exc))
 
 

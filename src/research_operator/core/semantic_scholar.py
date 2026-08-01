@@ -7,6 +7,10 @@ try:
 except ImportError:
     _requests = None
 
+from research_operator.core.logging_config import get_logger
+
+_logger = get_logger(__name__)
+
 _BASE = "https://api.semanticscholar.org/graph/v1"
 _FIELDS = "title,abstract,year,authors,openAccessPdf,citationCount,externalIds"
 _HEADERS = {"User-Agent": "YatiriCLI/0.3 (research tool; contact: yatiri-bot)"}
@@ -42,7 +46,8 @@ def search_semantic_scholar(
         )
         resp.raise_for_status()
         data = resp.json().get("data", [])
-    except Exception:
+    except Exception as exc:
+        _logger.warning("Semantic Scholar falló para %r: %s: %s", query, type(exc).__name__, exc)
         return []
 
     results = []

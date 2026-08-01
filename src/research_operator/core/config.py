@@ -5,6 +5,10 @@ from pathlib import Path
 
 import yaml
 
+from research_operator.core.logging_config import get_logger
+
+_logger = get_logger(__name__)
+
 _CONFIG_DIR = Path.home() / ".yatiri"
 _CONFIG_FILE = _CONFIG_DIR / "config.yaml"
 
@@ -105,7 +109,8 @@ def _load_file() -> dict:
     try:
         data = yaml.safe_load(_CONFIG_FILE.read_text(encoding="utf-8"))
         return data if isinstance(data, dict) else {}
-    except Exception:
+    except Exception as exc:
+        _logger.warning("No se pudo leer %s: %s: %s", _CONFIG_FILE, type(exc).__name__, exc)
         return {}
 
 

@@ -4,6 +4,10 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from research_operator.core.logging_config import get_logger
+
+_logger = get_logger(__name__)
+
 
 # Capacidades que cada MCP aporta
 _MCP_CAPABILITIES: dict[str, dict] = {
@@ -132,7 +136,8 @@ def _read_claude_settings() -> dict[str, dict]:
             try:
                 data = json.loads(path.read_text(encoding="utf-8"))
                 return data.get("mcpServers", {})
-            except Exception:
+            except Exception as exc:
+                _logger.debug("No se pudo leer %s: %s: %s", path, type(exc).__name__, exc)
                 continue
     return {}
 

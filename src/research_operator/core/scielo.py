@@ -11,6 +11,10 @@ try:
 except Exception:  # pragma: no cover
     requests = None
 
+from research_operator.core.logging_config import get_logger
+
+_logger = get_logger(__name__)
+
 
 ARTICLEMETA_URL = os.environ.get("SCIELO_ARTICLEMETA_URL", "https://articlemeta.scielo.org/api/v1/article/")
 SEARCH_URL = os.environ.get("SCIELO_SEARCH_URL", "https://search.scielo.org/")
@@ -54,7 +58,8 @@ def search_scielo_articlemeta(query: str, max_results: int = 5) -> list[SciELORe
             )
             response.raise_for_status()
             data = response.json()
-        except Exception:
+        except Exception as exc:
+            _logger.warning("SciELO articlemeta falló para %r: %s: %s", query, type(exc).__name__, exc)
             continue
 
         objects = extract_objects(data)
@@ -152,7 +157,8 @@ def search_scielo_html(query: str, max_results: int = 5) -> list[SciELOResult]:
             timeout=20,
         )
         response.raise_for_status()
-    except Exception:
+    except Exception as exc:
+        _logger.warning("SciELO búsqueda HTML falló para %r: %s: %s", query, type(exc).__name__, exc)
         return []
 
     return parse_scielo_search_html(response.text, max_results=max_results)

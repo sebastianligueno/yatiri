@@ -18,6 +18,9 @@ from research_operator.core.registry import read_jsonl_records
 from research_operator.core.semantic_scholar import search_semantic_scholar
 from research_operator.core.session import ProjectBrief, SessionState
 from research_operator.core.web_search import search_web
+from research_operator.core.logging_config import get_logger
+
+_logger = get_logger(__name__)
 
 
 _EPISTEMIC_BASE = (
@@ -57,8 +60,8 @@ def build_system_prompt(state: SessionState) -> str:
             label = profile.get("label", "")
             if label:
                 base = f"{base} El proyecto adjunto corresponde al perfil: {label}."
-        except Exception:
-            pass
+        except Exception as exc:
+            _logger.debug("No se pudo inferir perfil de %s: %s: %s", state.attached_path, type(exc).__name__, exc)
     return base
 
 
@@ -543,7 +546,8 @@ def rank_attached_sources(root: Path, sources: list[dict], query: str) -> list[d
         full_path = root / source["path"]
         try:
             text = full_path.read_text(encoding="utf-8", errors="ignore")[:4000].lower()
-        except Exception:
+        except Exception as exc:
+            _logger.debug("No se pudo leer %s: %s: %s", full_path, type(exc).__name__, exc)
             text = ""
         score += sum(3 for token in tokens if token in text)
         if source.get("role") == "project_doc":

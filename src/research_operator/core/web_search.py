@@ -10,6 +10,10 @@ try:
 except Exception:  # pragma: no cover
     requests = None
 
+from research_operator.core.logging_config import get_logger
+
+_logger = get_logger(__name__)
+
 
 @dataclass(slots=True)
 class WebResult:
@@ -31,7 +35,8 @@ def search_web(query: str, max_results: int = 5) -> list[WebResult]:
             timeout=20,
         )
         response.raise_for_status()
-    except Exception:
+    except Exception as exc:
+        _logger.warning("Búsqueda web (DuckDuckGo) falló para %r: %s: %s", query, type(exc).__name__, exc)
         return []
 
     return parse_duckduckgo_html(response.text, max_results=max_results)
@@ -72,7 +77,8 @@ def clean_html(raw: str) -> str:
 def extract_domain(url: str) -> str:
     try:
         return urlparse(url).netloc.lower()
-    except Exception:
+    except Exception as exc:
+        _logger.debug("No se pudo parsear dominio de %r: %s: %s", url, type(exc).__name__, exc)
         return ""
 
 

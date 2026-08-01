@@ -5,6 +5,9 @@ import re
 
 from research_operator.core.project import load_project_config, research_dir
 from research_operator.core.registry import read_jsonl_records
+from research_operator.core.logging_config import get_logger
+
+_logger = get_logger(__name__)
 
 
 def answer_question(root: Path, question: str) -> str:
@@ -42,7 +45,8 @@ def rank_sources(root: Path, sources: list[dict], question: str) -> list[dict]:
 def extract_snippet(path: Path, question: str) -> str:
     try:
         text = path.read_text(encoding="utf-8", errors="ignore")
-    except Exception:
+    except Exception as exc:
+        _logger.debug("No se pudo leer %s: %s: %s", path, type(exc).__name__, exc)
         return "No fue posible leer este archivo como texto."
 
     compact = re.sub(r"\s+", " ", text)
@@ -98,7 +102,8 @@ def role_bonus(role: str, tokens: list[str]) -> int:
 def content_bonus(root: Path, source: dict, tokens: list[str]) -> int:
     try:
         path = Path(source["path"])
-    except Exception:
+    except Exception as exc:
+        _logger.debug("Path inválido en source %r: %s: %s", source, type(exc).__name__, exc)
         return 0
 
     suffix = path.suffix.lower()
@@ -111,7 +116,8 @@ def content_bonus(root: Path, source: dict, tokens: list[str]) -> int:
 
     try:
         text = full_path.read_text(encoding="utf-8", errors="ignore")[:5000].lower()
-    except Exception:
+    except Exception as exc:
+        _logger.debug("No se pudo leer %s: %s: %s", full_path, type(exc).__name__, exc)
         return 0
 
     return sum(3 for token in tokens if token in text)

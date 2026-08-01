@@ -39,6 +39,9 @@ from research_operator.core.hal import search_hal
 from research_operator.core.jstage import search_jstage
 from research_operator.core.semantic_scholar import search_semantic_scholar
 from research_operator.core.scielo import search_scielo
+from research_operator.core.logging_config import get_logger
+
+_logger = get_logger(__name__)
 
 mcp = FastMCP("yatiri")
 
@@ -105,7 +108,8 @@ def _scielo_citing_count(title: str) -> int | None:
         )
         resp.raise_for_status()
         return resp.json().get("article", {}).get("total_received")
-    except Exception:
+    except Exception as exc:
+        _logger.warning("citedby.scielo.org falló para %r: %s: %s", title, type(exc).__name__, exc)
         return None
 
 
@@ -192,6 +196,7 @@ def multi_source_search(
             try:
                 raw[name] = (future.result(), None)
             except Exception as e:
+                _logger.warning("Fuente %s falló para %r: %s: %s", name, query, type(e).__name__, e)
                 raw[name] = (None, f"{type(e).__name__}: {e}")
 
     status_lines: list[str] = []

@@ -8,6 +8,10 @@ try:
 except Exception:  # pragma: no cover
     requests = None
 
+from research_operator.core.logging_config import get_logger
+
+_logger = get_logger(__name__)
+
 OPENALEX_URL = "https://api.openalex.org/works"
 
 
@@ -84,7 +88,8 @@ def search_openalex(
         )
         response.raise_for_status()
         data = response.json()
-    except Exception:
+    except Exception as exc:
+        _logger.warning("OpenAlex falló para %r: %s: %s", query, type(exc).__name__, exc)
         return []
 
     # Si el filtro de país no devuelve resultados, reintentar sin el país
@@ -94,7 +99,8 @@ def search_openalex(
             response = requests.get(OPENALEX_URL, params=params, headers={"User-Agent": "YatiriCLI/0.3"}, timeout=20)
             response.raise_for_status()
             data = response.json()
-        except Exception:
+        except Exception as exc:
+            _logger.warning("OpenAlex (reintento sin país) falló para %r: %s: %s", query, type(exc).__name__, exc)
             return []
 
     results: list[OpenAlexResult] = []
@@ -156,5 +162,6 @@ def _reconstruct_abstract(inverted_index: dict | None) -> str:
             for pos in positions:
                 position_word[pos] = word
         return " ".join(position_word[i] for i in sorted(position_word))
-    except Exception:
+    except Exception as exc:
+        _logger.debug("No se pudo reconstruir abstract de OpenAlex: %s: %s", type(exc).__name__, exc)
         return ""

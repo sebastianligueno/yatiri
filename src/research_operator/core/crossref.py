@@ -9,6 +9,10 @@ try:
 except Exception:  # pragma: no cover
     requests = None
 
+from research_operator.core.logging_config import get_logger
+
+_logger = get_logger(__name__)
+
 _BASE = "https://api.crossref.org/works"
 _HEADERS = {"User-Agent": "YatiriCLI/0.3 (mailto:sebastianligueno@gmail.com; tool: yatiri academic assistant)"}
 
@@ -60,7 +64,8 @@ def search_crossref(
         )
         resp.raise_for_status()
         items = resp.json().get("message", {}).get("items", [])
-    except Exception:
+    except Exception as exc:
+        _logger.warning("CrossRef falló para %r: %s: %s", query, type(exc).__name__, exc)
         return []
 
     results: list[CrossRefResult] = []

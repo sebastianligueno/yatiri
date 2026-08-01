@@ -11,6 +11,10 @@ from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
+from research_operator.core.logging_config import get_logger
+
+_logger = get_logger(__name__)
+
 
 @dataclass
 class BibEntry:
@@ -50,7 +54,8 @@ def _load_library(bib_path: str) -> list[BibEntry]:
         return []
     try:
         text = path.read_text(encoding="utf-8", errors="ignore")
-    except Exception:
+    except Exception as exc:
+        _logger.warning("No se pudo leer %s: %s: %s", path, type(exc).__name__, exc)
         return []
     return _parse_bib(text)
 

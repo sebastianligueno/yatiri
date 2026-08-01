@@ -15,6 +15,10 @@ try:
 except ImportError:
     _requests = None
 
+from research_operator.core.logging_config import get_logger
+
+_logger = get_logger(__name__)
+
 _BASE = "https://api.jstage.jst.go.jp/searchapi/do"
 _NS = {
     "atom": "http://www.w3.org/2005/Atom",
@@ -44,7 +48,8 @@ def search_jstage(query: str, max_results: int = 3) -> list[JStageResult]:
         )
         resp.raise_for_status()
         root = ET.fromstring(resp.content)
-    except Exception:
+    except Exception as exc:
+        _logger.warning("J-STAGE falló para %r: %s: %s", query, type(exc).__name__, exc)
         return []
 
     results = []

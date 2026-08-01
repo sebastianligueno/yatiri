@@ -13,6 +13,10 @@ try:
 except ImportError:
     _requests = None
 
+from research_operator.core.logging_config import get_logger
+
+_logger = get_logger(__name__)
+
 _BASE = "https://api.archives-ouvertes.fr/search/"
 _FIELDS = "title_s,abstract_s,uri_s,producedDate_tdate,authFullName_s,journalTitle_s,docType_s"
 _HEADERS = {"User-Agent": "YatiriCLI/0.3 (research tool)"}
@@ -45,7 +49,8 @@ def search_hal(query: str, max_results: int = 3) -> list[HALResult]:
         )
         resp.raise_for_status()
         docs = resp.json().get("response", {}).get("docs", [])
-    except Exception:
+    except Exception as exc:
+        _logger.warning("HAL falló para %r: %s: %s", query, type(exc).__name__, exc)
         return []
 
     results = []
