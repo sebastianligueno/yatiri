@@ -270,13 +270,14 @@ class TestZoteroCommand:
 
 
 class TestShowLibraryMatches:
-    def test_sin_bibtex_configurado_no_hace_nada(self, monkeypatch, capsys):
+    def test_sin_bibtex_ni_zotero_configurados_no_hace_nada(self, monkeypatch, capsys):
         monkeypatch.setattr(repl_mod, "get_config", lambda key: "")
+        monkeypatch.setattr(repl_mod, "has_zotero_credentials", lambda: False)
         state = SessionState(last_search_results=[_FakeResult(title="X")])
         repl_mod._show_library_matches(state, query="x")
         assert capsys.readouterr().out == ""
 
-    def test_muestra_coincidencia_exacta_por_doi(self, monkeypatch, tmp_path: Path, capsys):
+    def test_muestra_coincidencia_exacta_por_doi_en_bib_local(self, monkeypatch, tmp_path: Path, capsys):
         bib_path = tmp_path / "library.bib"
         bib_path.write_text(
             "@article{palacios2020,\n"
@@ -287,11 +288,52 @@ class TestShowLibraryMatches:
             encoding="utf-8",
         )
         monkeypatch.setattr(repl_mod, "get_config", lambda key: str(bib_path) if key == "YATIRI_BIBTEX_PATH" else "")
+        monkeypatch.setattr(repl_mod, "has_zotero_credentials", lambda: False)
         state = SessionState(last_search_results=[_FakeResult(title="Convivencia escolar", url="https://doi.org/10.1234/abc")])
         repl_mod._show_library_matches(state, query="convivencia")
         out = capsys.readouterr().out
-        assert "Coincidencia exacta" in out
+        assert "Coincidencia exacta, .bib local" in out
         assert "palacios2020" in out
+
+    def test_solo_zotero_configurado_sin_bibtex(self, monkeypatch, capsys):
+        result = MagicMock(key="ABCD1234")
+        monkeypatch.setattr(repl_mod, "get_config", lambda key: "")
+        monkeypatch.setattr(repl_mod, "has_zotero_credentials", lambda: True)
+        monkeypatch.setattr(repl_mod, "find_in_zotero", lambda doi, title: result)
+        state = SessionState(last_search_results=[_FakeResult(title="Convivencia escolar")])
+        repl_mod._show_library_matches(state, query="convivencia")
+        out = capsys.readouterr().out
+        assert "Coincidencia exacta, Zotero" in out
+        assert "ABCD1234" in out
+
+    def test_zotero_es_fallback_si_no_hay_match_en_bib_local(self, monkeypatch, tmp_path: Path, capsys):
+        bib_path = tmp_path / "library.bib"
+        bib_path.write_text(
+            "@article{otro2019,\n"
+            "  title = {Un tema totalmente distinto},\n"
+            "  year = {2019},\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        zotero_result = MagicMock(key="ZKEY99")
+        monkeypatch.setattr(repl_mod, "get_config", lambda key: str(bib_path) if key == "YATIRI_BIBTEX_PATH" else "")
+        monkeypatch.setattr(repl_mod, "has_zotero_credentials", lambda: True)
+        monkeypatch.setattr(repl_mod, "find_in_zotero", lambda doi, title: zotero_result)
+        state = SessionState(last_search_results=[_FakeResult(title="Convivencia escolar")])
+        repl_mod._show_library_matches(state, query="convivencia")
+        out = capsys.readouterr().out
+        assert "Coincidencia exacta, Zotero" in out
+        assert "ZKEY99" in out
+
+    def test_no_esta_en_bib_ni_zotero(self, monkeypatch, capsys):
+        monkeypatch.setattr(repl_mod, "get_config", lambda key: "")
+        monkeypatch.setattr(repl_mod, "has_zotero_credentials", lambda: True)
+        monkeypatch.setattr(repl_mod, "find_in_zotero", lambda doi, title: None)
+        state = SessionState(last_search_results=[_FakeResult(title="Tema nuevo sin registrar")])
+        repl_mod._show_library_matches(state, query="tema")
+        out = capsys.readouterr().out
+        assert "No están en tu biblioteca" in out
+        assert "Tema nuevo sin registrar" in out
 
 
 class TestRunBriefForm:

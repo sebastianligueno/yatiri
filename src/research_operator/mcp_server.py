@@ -30,6 +30,8 @@ try:
 except ImportError:
     requests = None
 
+# mcp>=2.0 renombró FastMCP a mcp.server.mcpserver.MCPServer; este archivo
+# no está migrado, por eso pyproject.toml fija "mcp>=1.0,<2.0".
 from mcp.server.fastmcp import FastMCP
 
 from research_operator.core.crossref import search_crossref

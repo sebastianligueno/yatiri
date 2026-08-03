@@ -18,8 +18,8 @@ from research_operator.core.project import ensure_research_layout, init_project_
 from research_operator.core.scanner import scan_project
 from research_operator.core.session import SessionState
 from research_operator.core.vault_export import export_to_vault, get_vault_folders
+from research_operator.core.zotero import find_in_zotero, search_zotero
 from research_operator.core.zotero import has_credentials as has_zotero_credentials
-from research_operator.core.zotero import search_zotero
 
 try:
     from prompt_toolkit import PromptSession
@@ -263,42 +263,58 @@ def _run_zotero_search(query: str) -> None:
 
 
 def _show_library_matches(state: SessionState, query: str = "") -> None:
-    """Cruza resultados de búsqueda con la biblioteca BibTeX y muestra entradas relevantes del tema."""
+    """Cruza resultados de búsqueda con el .bib local y/o Zotero (si están configurados)."""
     bib_path_str = get_config("YATIRI_BIBTEX_PATH")
-    if not bib_path_str:
-        return
-    bib_path = Path(bib_path_str).expanduser()
-    if not bib_path.exists():
+    bib_path = Path(bib_path_str).expanduser() if bib_path_str else None
+    use_bib = bool(bib_path and bib_path.exists())
+    use_zotero = has_zotero_credentials()
+
+    if not use_bib and not use_zotero:
         return
 
-    # 1. Cruce exacto: cada resultado web contra la biblioteca (DOI o título)
+    # 1. Cruce exacto: cada resultado web contra el .bib local primero (offline,
+    # más rápido) y, si no hay match ahí, contra Zotero en vivo.
     found_in_lib = []
+    found_in_zotero = []
     not_in_lib = []
     for result in state.last_search_results:
         doi = getattr(result, "url", "")
         doi = doi.replace("https://doi.org/", "").strip() if "doi.org" in doi else ""
         title = getattr(result, "title", "")
-        match = find_in_library(doi, title, bib_path)
+
+        match = find_in_library(doi, title, bib_path) if use_bib else None
         if match:
             found_in_lib.append((result, match))
-        else:
-            not_in_lib.append(result)
+            continue
 
-    # 2. Búsqueda temática directa en la biblioteca con la misma consulta
+        zmatch = find_in_zotero(doi, title) if use_zotero else None
+        if zmatch:
+            found_in_zotero.append((result, zmatch))
+            continue
+
+        not_in_lib.append(result)
+
+    # 2. Búsqueda temática directa en el .bib local con la misma consulta
     local_hits = []
-    if query:
+    if query and use_bib:
         already_shown = {e.key for _, e in found_in_lib}
         local_hits = [e for e in search_local_library(query, bib_path, max_results=5)
                       if e.key not in already_shown]
 
-    if not found_in_lib and not not_in_lib and not local_hits:
+    if not found_in_lib and not found_in_zotero and not not_in_lib and not local_hits:
         return
 
-    lines = ["\n[dim]── Biblioteca local ──[/dim]"]
+    lines = ["\n[dim]── Tu biblioteca ──[/dim]"]
 
     if found_in_lib:
-        lines.append(f"[green]Coincidencia exacta ({len(found_in_lib)}):[/green]")
+        lines.append(f"[green]Coincidencia exacta, .bib local ({len(found_in_lib)}):[/green]")
         for result, entry in found_in_lib:
+            title = escape(getattr(result, "title", "")[:65])
+            lines.append(f"  ✓ {escape('[' + entry.key + ']')}  {title}")
+
+    if found_in_zotero:
+        lines.append(f"[green]Coincidencia exacta, Zotero ({len(found_in_zotero)}):[/green]")
+        for result, entry in found_in_zotero:
             title = escape(getattr(result, "title", "")[:65])
             lines.append(f"  ✓ {escape('[' + entry.key + ']')}  {title}")
 
