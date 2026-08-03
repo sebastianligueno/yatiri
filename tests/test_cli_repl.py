@@ -226,6 +226,49 @@ class TestRunExport:
         assert any((vault / "Convivencia").glob("*.md"))
 
 
+class TestZoteroCommand:
+    def test_sin_query_muestra_uso(self, capsys):
+        repl_mod.handle_slash_command(SessionState(), "/zotero")
+        assert "Uso: /zotero" in capsys.readouterr().out
+
+    def test_sin_credenciales_pide_configurar(self, monkeypatch, capsys):
+        monkeypatch.setattr(repl_mod, "has_zotero_credentials", lambda: False)
+        repl_mod.handle_slash_command(SessionState(), "/zotero convivencia escolar")
+        out = capsys.readouterr().out
+        assert "no está configurado" in out
+        assert "yatiri setup" in out
+
+    def test_sin_resultados(self, monkeypatch, capsys):
+        monkeypatch.setattr(repl_mod, "has_zotero_credentials", lambda: True)
+        monkeypatch.setattr(repl_mod, "search_zotero", lambda query, max_results: [])
+        repl_mod.handle_slash_command(SessionState(), "/zotero tema inexistente")
+        assert "Sin resultados" in capsys.readouterr().out
+
+    def test_con_resultados_los_lista(self, monkeypatch, capsys):
+        result = MagicMock(
+            title="Convivencia escolar en Chile", year="2021",
+            authors="Pérez, A.", journal="Revista X", doi="10.1234/abc", url="",
+        )
+        monkeypatch.setattr(repl_mod, "has_zotero_credentials", lambda: True)
+        monkeypatch.setattr(repl_mod, "search_zotero", lambda query, max_results: [result])
+        repl_mod.handle_slash_command(SessionState(), "/zotero convivencia escolar")
+        out = capsys.readouterr().out
+        assert "Convivencia escolar en Chile" in out
+        assert "Pérez, A." in out
+        assert "https://doi.org/10.1234/abc" in out
+
+    def test_titulo_con_corchetes_no_se_pierde(self, monkeypatch, capsys):
+        result = MagicMock(
+            title="Un [concepto] entre corchetes", year=None,
+            authors=None, journal=None, doi=None, url="https://x.org",
+        )
+        monkeypatch.setattr(repl_mod, "has_zotero_credentials", lambda: True)
+        monkeypatch.setattr(repl_mod, "search_zotero", lambda query, max_results: [result])
+        repl_mod.handle_slash_command(SessionState(), "/zotero concepto")
+        out = capsys.readouterr().out
+        assert "[concepto]" in out
+
+
 class TestShowLibraryMatches:
     def test_sin_bibtex_configurado_no_hace_nada(self, monkeypatch, capsys):
         monkeypatch.setattr(repl_mod, "get_config", lambda key: "")

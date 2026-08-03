@@ -88,6 +88,42 @@ class TestConfigureOllama:
         assert get_config("SCHOLAR_OLLAMA_MODEL") == "llama3"
 
 
+class TestConfigureZotero:
+    def test_guarda_library_id_y_clave_nueva(self, tmp_path, monkeypatch):
+        _isolate_config_file(tmp_path, monkeypatch)
+        monkeypatch.setattr("getpass.getpass", lambda *a, **k: "clave-zotero-1234")
+        _feed_inputs(monkeypatch, ["1217578"])
+        setup_mod._configure_zotero()
+        assert get_config("ZOTERO_LIBRARY_ID") == "1217578"
+        assert get_config("ZOTERO_API_KEY") == "clave-zotero-1234"
+
+    def test_clave_existente_no_se_reemplaza_si_dice_no(self, tmp_path, monkeypatch):
+        _isolate_config_file(tmp_path, monkeypatch)
+        from research_operator.core.config import save_config
+        save_config("ZOTERO_API_KEY", "clave-original")
+        _feed_inputs(monkeypatch, ["", "n"])
+        setup_mod._configure_zotero()
+        assert get_config("ZOTERO_API_KEY") == "clave-original"
+
+    def test_clave_existente_se_reemplaza_si_dice_si(self, tmp_path, monkeypatch):
+        _isolate_config_file(tmp_path, monkeypatch)
+        from research_operator.core.config import save_config
+        save_config("ZOTERO_API_KEY", "clave-vieja")
+        monkeypatch.setattr("getpass.getpass", lambda *a, **k: "clave-nueva")
+        _feed_inputs(monkeypatch, ["", "s"])
+        setup_mod._configure_zotero()
+        assert get_config("ZOTERO_API_KEY") == "clave-nueva"
+
+    def test_library_id_vacio_no_sobreescribe(self, tmp_path, monkeypatch):
+        _isolate_config_file(tmp_path, monkeypatch)
+        from research_operator.core.config import save_config
+        save_config("ZOTERO_LIBRARY_ID", "1217578")
+        monkeypatch.setattr("getpass.getpass", lambda *a, **k: "")
+        _feed_inputs(monkeypatch, [""])
+        setup_mod._configure_zotero()
+        assert get_config("ZOTERO_LIBRARY_ID") == "1217578"
+
+
 class TestConfigureRegion:
     def test_guarda_region_valida(self, tmp_path, monkeypatch):
         _isolate_config_file(tmp_path, monkeypatch)
@@ -167,7 +203,7 @@ class TestShowCurrentAndRunSetup:
 
     def test_run_setup_opcion_salir_no_cambia_nada(self, tmp_path, monkeypatch, capsys):
         _isolate_config_file(tmp_path, monkeypatch)
-        _feed_inputs(monkeypatch, ["11"])
+        _feed_inputs(monkeypatch, ["12"])
         setup_mod.run_setup()
         out = capsys.readouterr().out
         assert "Sin cambios." in out
@@ -177,6 +213,14 @@ class TestShowCurrentAndRunSetup:
         _feed_inputs(monkeypatch, ["1", "openai"])
         setup_mod.run_setup()
         assert get_config("SCHOLAR_MODEL_PROVIDER") == "openai"
+
+    def test_run_setup_dispatch_a_configurar_zotero(self, tmp_path, monkeypatch):
+        _isolate_config_file(tmp_path, monkeypatch)
+        monkeypatch.setattr("getpass.getpass", lambda *a, **k: "clave-zotero")
+        _feed_inputs(monkeypatch, ["10", "1217578"])
+        setup_mod.run_setup()
+        assert get_config("ZOTERO_LIBRARY_ID") == "1217578"
+        assert get_config("ZOTERO_API_KEY") == "clave-zotero"
 
 
 class TestAskHelpers:

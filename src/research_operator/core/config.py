@@ -43,6 +43,9 @@ _ENV_ALIASES: dict[str, str] = {
     # Integración local
     "YATIRI_VAULT_PATH": "YATIRI_VAULT_PATH",    # ruta del vault Obsidian
     "YATIRI_BIBTEX_PATH": "YATIRI_BIBTEX_PATH",  # ruta del .bib local
+    # Zotero (biblioteca personal, búsqueda directa vía Web API)
+    "ZOTERO_API_KEY": "ZOTERO_API_KEY",
+    "ZOTERO_LIBRARY_ID": "ZOTERO_LIBRARY_ID",
 }
 
 # Perfiles de región predefinidos
@@ -163,6 +166,8 @@ def config_summary() -> dict:
         "ollama_url": get_config("SCHOLAR_OLLAMA_URL") or "http://localhost:11434/api/chat",
         "ollama_model": get_config("SCHOLAR_OLLAMA_MODEL") or "phi4-mini:3.8b",
         "region": get_config("AMAUTA_REGION") or "latam",
+        "zotero_key": _mask(get_config("ZOTERO_API_KEY")),
+        "zotero_library_id": get_config("ZOTERO_LIBRARY_ID") or "(no configurada)",
         "config_file": str(_CONFIG_FILE),
     }
 

@@ -87,6 +87,8 @@ Dentro de la sesión:
 /brief  → completar ficha de proyecto (paradigma, pregunta, marco teórico, método…)
 /review → revisión crítica del proyecto como evaluador externo
 
+/zotero convivencia escolar chile      → busca directo en tu biblioteca Zotero
+
 /mcp    ver MCPs detectados y sugerencias de instalación
 /doctor diagnóstico de proveedores activos
 /clear  limpiar historial de la sesión
@@ -175,7 +177,20 @@ Por defecto, `latam` —América Latina en español y portugués. Se puede cambi
 
 Yatiri detecta qué herramientas MCP tienes instaladas en Claude Code (Zotero, Scite, Semantic Scholar, OpenAlex, PubMed, etc.) y las muestra con `/mcp`.
 
-**Limitación:** Yatiri no puede llamar directamente a esos MCPs —eso requiere Claude Code como intermediario. Lo que hace es inventariarte lo disponible y sugerirte cómo usarlo desde Claude Code para búsquedas más avanzadas. Las APIs que esos MCPs usan (Semantic Scholar, PubMed, OpenAlex) están integradas directamente en Yatiri.
+**Limitación:** Yatiri no puede llamar directamente a esos MCPs —eso requiere Claude Code como intermediario. Lo que hace es inventariarte lo disponible y sugerirte cómo usarlo desde Claude Code para búsquedas más avanzadas. Las APIs que esos MCPs usan (Semantic Scholar, PubMed, OpenAlex) están integradas directamente en Yatiri. Zotero es la excepción: `/zotero` habla directo con su Web API (ver abajo), sin pasar por Claude Code ni por un MCP.
+
+---
+
+## Zotero (biblioteca personal)
+
+`/zotero <consulta>` busca directo en tu biblioteca Zotero vía su Web API —sin necesitar Claude Code abierto ni depender de que BetterBibTeX haya re-exportado el `.bib` local.
+
+Configuración con `yatiri setup` → opción 10:
+
+- **Library ID**: en [zotero.org/settings/keys](https://www.zotero.org/settings/keys), el número bajo "Your userID for use in API calls".
+- **API key**: crear una en la misma página, con permiso de lectura sobre tu biblioteca.
+
+Complementa (no reemplaza) el cruce contra el `.bib` local que ya hace Yatiri al buscar (`/search`): ese cruce es offline y depende de que BetterBibTeX haya sincronizado; `/zotero` consulta tu biblioteca en vivo.
 
 ---
 
@@ -219,7 +234,6 @@ Ideas que podrían llegar en versiones futuras, sin fecha ni promesa:
 - **Búsqueda en carpetas locales** — indexar PDFs y notas locales para usarlos como contexto
 - **Exportación BibTeX / RIS** — para flujos con LaTeX o Zotero/Mendeley
 - **MCPs en otros agentes** — detección en Codex CLI, Gemini CLI, Hermes y similares
-- **Zotero directo** — búsqueda en biblioteca personal vía REST API sin necesitar Claude Code abierto
 - **Caché de instrucciones** — para reducir costos con sesiones largas en APIs que lo soporten
 
 Si alguna de estas te sirve, abre un issue.

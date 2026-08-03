@@ -452,7 +452,6 @@ src/research_operator/
 
 **Corto plazo**
 - Integración directa con Redalyc y Dialnet (sin depender de DuckDuckGo)
-- Llamadas directas a las APIs REST de Zotero y Semantic Scholar desde Amauta
 - Respuestas en streaming (salida progresiva en el terminal)
 
 **Mediano plazo**

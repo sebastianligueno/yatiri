@@ -18,6 +18,8 @@ from research_operator.core.project import ensure_research_layout, init_project_
 from research_operator.core.scanner import scan_project
 from research_operator.core.session import SessionState
 from research_operator.core.vault_export import export_to_vault, get_vault_folders
+from research_operator.core.zotero import has_credentials as has_zotero_credentials
+from research_operator.core.zotero import search_zotero
 
 try:
     from prompt_toolkit import PromptSession
@@ -135,6 +137,9 @@ def handle_slash_command(state: SessionState, raw: str) -> bool:
     if command == "/export":
         _run_export(state, args)
         return False
+    if command == "/zotero":
+        _run_zotero_search(" ".join(args))
+        return False
     if command == "/cost":
         console.print(_render_cost(state))
         return False
@@ -222,6 +227,39 @@ def _run_export(state: SessionState, args: list[str]) -> None:
             console.print(f"  {p.name}")
     else:
         console.print("No se pudo exportar ningún resultado.")
+
+
+def _run_zotero_search(query: str) -> None:
+    if not query:
+        console.print("Uso: /zotero <consulta>")
+        return
+    if not has_zotero_credentials():
+        console.print(
+            "Zotero no está configurado. Usa `yatiri setup` → opción 10 "
+            "para agregar tu Library ID y API key."
+        )
+        return
+
+    results = search_zotero(query, max_results=8)
+    if not results:
+        console.print(f"Sin resultados en tu biblioteca Zotero para: {escape(query)}")
+        return
+
+    lines = [f"Resultados en tu biblioteca Zotero ({len(results)}):"]
+    for r in results:
+        title = escape(r.title)
+        header = f"  - {title}"
+        if r.year:
+            header += f" ({r.year})"
+        lines.append(header)
+        if r.authors:
+            lines.append(f"    {escape(r.authors)}")
+        if r.journal:
+            lines.append(f"    {escape(r.journal)}")
+        ref = f"https://doi.org/{r.doi}" if r.doi else r.url
+        if ref:
+            lines.append(f"    {ref}")
+    console.print("\n".join(lines))
 
 
 def _show_library_matches(state: SessionState, query: str = "") -> None:
@@ -370,6 +408,7 @@ def render_help() -> str:
         "  /teach <consulta>     planificación docente\n"
         "  /write <consulta>     redacción académica\n"
         "  /verify <consulta>    revisión crítica de argumentos\n"
+        "  /zotero <consulta>    busca directo en tu biblioteca Zotero personal\n"
         "\n[bold]Proyecto:[/bold]\n"
         "  /brief                completar ficha de proyecto (paradigma, pregunta, objetivos…)\n"
         "  /review               revisión crítica del proyecto como evaluador externo\n"

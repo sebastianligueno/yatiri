@@ -43,10 +43,11 @@ def run_setup() -> None:
     _print("  7. Ollama local")
     _print("  8. Región e idioma de búsqueda")
     _print("  9. Vault de Obsidian y biblioteca BibTeX")
-    _print(" 10. Borrar configuración guardada")
-    _print(" 11. Salir\n")
+    _print(" 10. Zotero (biblioteca personal)")
+    _print(" 11. Borrar configuración guardada")
+    _print(" 12. Salir\n")
 
-    choice = _ask("Opción [1-11]", default="11").strip()
+    choice = _ask("Opción [1-12]", default="12").strip()
 
     dispatch = {
         "1": _configure_provider,
@@ -58,7 +59,8 @@ def run_setup() -> None:
         "7": _configure_ollama,
         "8": _configure_region,
         "9": _configure_local,
-        "10": _clear_config,
+        "10": _configure_zotero,
+        "11": _clear_config,
     }
     fn = dispatch.get(choice)
     if fn:
@@ -87,6 +89,8 @@ def _show_current() -> None:
             ("Anthropic model", summary["anthropic_model"]),
             ("Ollama URL", summary["ollama_url"]),
             ("Ollama model", summary["ollama_model"]),
+            ("Zotero key", summary["zotero_key"]),
+            ("Zotero library", summary["zotero_library_id"]),
         ]
         for k, v in rows:
             table.add_row(k, v)
@@ -235,6 +239,34 @@ def _configure_local() -> None:
             _print(f"Archivo no encontrado: {bib_path}")
 
 
+def _configure_zotero() -> None:
+    _print("\n[bold]Zotero — biblioteca personal[/bold]")
+    _print("Permite buscar directamente en tu biblioteca Zotero (Web API), sin")
+    _print("depender de que el .bib local esté sincronizado ni de Claude Code.\n")
+    _print("Library ID: en zotero.org/settings/keys (número bajo 'Your userID')")
+    _print("API key: crear una en zotero.org/settings/keys con permiso de lectura\n")
+
+    current_library_id = get_config("ZOTERO_LIBRARY_ID")
+    library_id = _ask("Library ID (Enter para no cambiar)", default=current_library_id).strip()
+    if library_id:
+        save_config("ZOTERO_LIBRARY_ID", library_id)
+        _print(f"Library ID guardado: {library_id}")
+
+    current_key = get_config("ZOTERO_API_KEY")
+    if current_key:
+        _print(f"Clave actual: {current_key[:4]}...{current_key[-4:] if len(current_key) > 8 else '***'}")
+        if _ask("¿Reemplazar?", default="n").strip().lower() in {"s", "si", "sí", "y", "yes"}:
+            key = _ask_secret("Nueva API key (Enter para cancelar)")
+            if key:
+                save_config("ZOTERO_API_KEY", key)
+                _print("Clave guardada.")
+    else:
+        key = _ask_secret("API key (Enter para cancelar)")
+        if key:
+            save_config("ZOTERO_API_KEY", key)
+            _print("Clave guardada.")
+
+
 def _clear_config() -> None:
     confirm = _ask("¿Borrar toda la configuración guardada? (s/N)", default="n").strip().lower()
     if confirm in {"s", "si", "sí", "y", "yes"}:
@@ -245,6 +277,7 @@ def _clear_config() -> None:
             "ANTHROPIC_API_KEY", "ANTHROPIC_MODEL",
             "SCHOLAR_MODEL_PROVIDER", "SCHOLAR_OLLAMA_URL", "SCHOLAR_OLLAMA_MODEL",
             "AMAUTA_REGION",
+            "ZOTERO_API_KEY", "ZOTERO_LIBRARY_ID",
         ]
         for key in all_keys:
             delete_config(key)
