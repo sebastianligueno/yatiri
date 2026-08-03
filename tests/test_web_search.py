@@ -6,6 +6,7 @@ from research_operator.core.web_search import (
     classify_source_type,
     extract_domain,
     parse_duckduckgo_html,
+    resolve_ddg_redirect,
     search_web,
 )
 
@@ -31,6 +32,41 @@ class TestParseDuckduckgoHtml:
         html = _DDG_HTML * 3
         results = parse_duckduckgo_html(html, max_results=2)
         assert len(results) == 2
+
+    def test_decodifica_redireccion_ddg_y_clasifica_sobre_el_destino_real(self):
+        html = (
+            '<div class="result">'
+            '<a class="result__a" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fwww.mineduc.gob.cl%2Fnorma">'
+            "Norma del Mineduc</a>"
+            '<a class="result__snippet">Un documento institucional.</a>'
+            "</div>"
+        )
+        results = parse_duckduckgo_html(html)
+        assert len(results) == 1
+        r = results[0]
+        assert r.url == "https://www.mineduc.gob.cl/norma"
+        assert r.domain == "www.mineduc.gob.cl"
+        assert r.source_type == "institutional"
+
+    def test_descarta_redireccion_sin_uddg_recuperable(self):
+        html = (
+            '<div class="result">'
+            '<a class="result__a" href="//duckduckgo.com/l/?otra=1">Sin destino</a>'
+            '<a class="result__snippet">snippet</a>'
+            "</div>"
+        )
+        assert parse_duckduckgo_html(html) == []
+
+
+class TestResolveDdgRedirect:
+    def test_url_normal_pasa_directo(self):
+        assert resolve_ddg_redirect("https://scielo.org/articulo") == "https://scielo.org/articulo"
+
+    def test_decodifica_redireccion(self):
+        assert resolve_ddg_redirect("//duckduckgo.com/l/?uddg=https%3A%2F%2Fexample.org%2Fx") == "https://example.org/x"
+
+    def test_redireccion_sin_uddg_devuelve_none(self):
+        assert resolve_ddg_redirect("//duckduckgo.com/l/?otra=1") is None
 
 
 class TestExtractDomain:

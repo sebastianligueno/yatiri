@@ -136,9 +136,11 @@ def multi_source_search(
     """
     Busca en paralelo en las fuentes académicas ya integradas en Yatiri:
     CrossRef, OpenAlex, PubMed, HAL, J-STAGE, Semantic Scholar y SciELO
-    (metadatos vía articlemeta; la búsqueda por texto libre de SciELO está
-    bloqueada por protección anti-bot en su motor Solr, así que esa fuente
-    puede devolver 0 resultados). Las consultas corren en threads
+    (metadatos vía articlemeta; si eso no trae nada, cae a un fallback vía
+    DuckDuckGo filtrado por dominio scielo.* — el buscador propio de
+    SciELO, search.scielo.org, sigue bloqueado por protección anti-bot en
+    su motor Solr, así que esta fuente rinde menos que las demás y puede
+    devolver 0 resultados igual). Las consultas corren en threads
     simultáneos, así que el tiempo total es el de la fuente más lenta, no
     la suma de todas. Los resultados duplicados entre fuentes (mismo DOI,
     o mismo título normalizado si no hay DOI) se fusionan en una sola

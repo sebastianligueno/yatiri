@@ -16,8 +16,10 @@ from research_operator.core.scielo import (
     search_scielo,
     search_scielo_articlemeta,
     search_scielo_html,
+    search_scielo_web,
     tokenize,
 )
+from research_operator.core.web_search import WebResult
 
 
 def _mock_response(json_data=None, text: str = "") -> MagicMock:
@@ -182,6 +184,32 @@ class TestSearchScieloHtml:
             assert search_scielo_html("x") == []
 
 
+class TestSearchScieloWeb:
+    def test_se_queda_solo_con_dominios_scielo(self):
+        web_results = [
+            WebResult(title="Un paper en SciELO", url="https://scielo.cl/x", snippet="sobre 2020", domain="scielo.cl", source_type="academic"),
+            WebResult(title="Otro resultado", url="https://otrapagina.com/x", snippet="nada que ver", domain="otrapagina.com", source_type="web"),
+        ]
+        with patch("research_operator.core.scielo.search_web", return_value=web_results):
+            results = search_scielo_web("convivencia")
+            assert len(results) == 1
+            assert results[0].title == "Un paper en SciELO"
+            assert results[0].year == "2020"
+
+    def test_respeta_max_results(self):
+        web_results = [
+            WebResult(title=f"Paper {i}", url=f"https://scielo.br/{i}", snippet="", domain="scielo.br", source_type="academic")
+            for i in range(5)
+        ]
+        with patch("research_operator.core.scielo.search_web", return_value=web_results):
+            assert len(search_scielo_web("x", max_results=2)) == 2
+
+    def test_sin_resultados_scielo_devuelve_vacio(self):
+        web_results = [WebResult(title="X", url="https://otrapagina.com", snippet="", domain="otrapagina.com", source_type="web")]
+        with patch("research_operator.core.scielo.search_web", return_value=web_results):
+            assert search_scielo_web("x") == []
+
+
 class TestSearchScielo:
     def test_sin_requests_instalado_devuelve_vacio(self):
         with patch("research_operator.core.scielo.requests", None):
@@ -194,3 +222,16 @@ class TestSearchScielo:
             mock_requests.get.side_effect = [empty, empty, html_resp]
             results = search_scielo("consulta cualquiera")
             assert len(results) == 1
+
+    def test_cae_a_web_si_articlemeta_y_html_no_dan_resultados(self):
+        with patch("research_operator.core.scielo.requests") as mock_requests:
+            empty = _mock_response({"objects": []})
+            html_resp = _mock_response(text="<html>sin resultados</html>")
+            mock_requests.get.side_effect = [empty, empty, html_resp]
+            web_results = [
+                WebResult(title="Un paper", url="https://scielo.cl/y", snippet="resumen", domain="scielo.cl", source_type="academic")
+            ]
+            with patch("research_operator.core.scielo.search_web", return_value=web_results):
+                results = search_scielo("consulta cualquiera")
+                assert len(results) == 1
+                assert results[0].title == "Un paper"

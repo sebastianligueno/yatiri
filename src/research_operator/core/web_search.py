@@ -3,7 +3,7 @@ from __future__ import annotations
 import html
 import re
 from dataclasses import dataclass
-from urllib.parse import quote_plus, urlparse
+from urllib.parse import parse_qs, quote_plus, unquote, urlparse
 
 try:
     import requests
@@ -51,7 +51,10 @@ def parse_duckduckgo_html(payload: str, max_results: int = 5) -> list[WebResult]
     results: list[WebResult] = []
     for match in pattern.finditer(payload):
         title = clean_html(match.group("title"))
-        url = html.unescape(match.group("url"))
+        raw_url = html.unescape(match.group("url"))
+        url = resolve_ddg_redirect(raw_url)
+        if url is None:
+            continue
         snippet = clean_html(match.group("snippet"))
         results.append(
             WebResult(
@@ -65,6 +68,22 @@ def parse_duckduckgo_html(payload: str, max_results: int = 5) -> list[WebResult]
         if len(results) >= max_results:
             break
     return results
+
+
+def resolve_ddg_redirect(url: str) -> str | None:
+    """Resuelve una URL de redirección de DuckDuckGo (//duckduckgo.com/l/?uddg=...)
+    a la URL real de destino. Si `url` no es un redirect, la devuelve sin
+    cambios. Devuelve None si es un redirect pero no se pudo recuperar el
+    destino — el resultado original no sirve para nada aguas abajo (dominio
+    y clasificación de fuente quedarían sobre duckduckgo.com, no sobre el
+    sitio real)."""
+    if "duckduckgo.com/l/" not in url and not url.startswith("//duckduckgo"):
+        return url
+    parsed = urlparse(url if url.startswith("http") else "https:" + url)
+    uddg = parse_qs(parsed.query).get("uddg", [""])
+    if uddg and uddg[0]:
+        return unquote(uddg[0])
+    return None
 
 
 def clean_html(raw: str) -> str:

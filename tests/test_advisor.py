@@ -11,7 +11,6 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 from research_operator.core.advisor import (
-    _decode_ddg_url,
     _is_health_query,
     _is_relevant,
     _is_topic_query,
@@ -77,22 +76,6 @@ class TestIsRelevant:
     def test_no_coincide(self):
         result = MagicMock(title="Otro tema", snippet="", journal=None, url="")
         assert _is_relevant(result, ["convivencia"]) is False
-
-
-class TestDecodeDdgUrl:
-    def test_url_normal_pasa_directo(self):
-        result = MagicMock(url="https://scielo.org/articulo")
-        assert _decode_ddg_url(result) is True
-        assert result.url == "https://scielo.org/articulo"
-
-    def test_decodifica_redireccion_ddg(self):
-        result = MagicMock(url="//duckduckgo.com/l/?uddg=https%3A%2F%2Fexample.org%2Fx")
-        assert _decode_ddg_url(result) is True
-        assert result.url == "https://example.org/x"
-
-    def test_redireccion_sin_uddg_no_recuperable(self):
-        result = MagicMock(url="//duckduckgo.com/l/?otra=1")
-        assert _decode_ddg_url(result) is False
 
 
 class TestBuildSearchQueries:

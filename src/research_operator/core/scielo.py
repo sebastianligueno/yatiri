@@ -12,6 +12,7 @@ except Exception:  # pragma: no cover
     requests = None
 
 from research_operator.core.logging_config import get_logger
+from research_operator.core.web_search import extract_domain, search_web
 
 _logger = get_logger(__name__)
 
@@ -39,7 +40,12 @@ def search_scielo(query: str, max_results: int = 5) -> list[SciELOResult]:
     results = search_scielo_articlemeta(query, max_results=max_results)
     if results:
         return results[:max_results]
-    return search_scielo_html(query, max_results=max_results)
+
+    results = search_scielo_html(query, max_results=max_results)
+    if results:
+        return results[:max_results]
+
+    return search_scielo_web(query, max_results=max_results)
 
 
 def search_scielo_articlemeta(query: str, max_results: int = 5) -> list[SciELOResult]:
@@ -162,6 +168,36 @@ def search_scielo_html(query: str, max_results: int = 5) -> list[SciELOResult]:
         return []
 
     return parse_scielo_search_html(response.text, max_results=max_results)
+
+
+def search_scielo_web(query: str, max_results: int = 5) -> list[SciELOResult]:
+    """Fallback cuando articlemeta y el buscador propio de SciELO no traen nada.
+
+    No golpea search.scielo.org (Solr, bloqueado por protección anti-bot
+    Bunny Shield desde 2026-07-31, ver docs/guia_yatiri_cli_y_mcp.md) sino
+    que busca en DuckDuckGo y se queda solo con los resultados cuyo dominio
+    contiene "scielo" — el contenido de SciELO con presencia web sigue
+    indexado ahí aunque su propio motor de búsqueda esté inaccesible. Menos
+    preciso que una búsqueda nativa (sin filtro de colección/país) pero
+    evita devolver cero resultados por defecto.
+    """
+    web_results = search_web(f"{query} scielo", max_results=max_results * 3)
+    results: list[SciELOResult] = []
+    for r in web_results:
+        if "scielo" not in extract_domain(r.url):
+            continue
+        results.append(SciELOResult(
+            title=r.title,
+            url=r.url,
+            snippet=r.snippet,
+            doi=None,
+            journal=None,
+            collection=None,
+            year=extract_year_from_text(r.snippet),
+        ))
+        if len(results) >= max_results:
+            break
+    return results
 
 
 def parse_scielo_search_html(payload: str, max_results: int = 5) -> list[SciELOResult]:

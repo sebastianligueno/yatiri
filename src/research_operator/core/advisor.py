@@ -167,7 +167,7 @@ def gather_web_results(state: SessionState, query: str):
     if "fr" in langs:
         raw += search_hal(query, max_results=2)
     # Búsqueda web solo para fuentes institucionales verificadas
-    web = [r for r in search_web(query, max_results=6) if _decode_ddg_url(r)]
+    web = search_web(query, max_results=6)
     raw += [r for r in web if getattr(r, "source_type", "web") in ("institutional", "legal")]
     # Filtrar por relevancia y deduplicar
     tokens = tokenize(query)
@@ -196,20 +196,6 @@ def _is_relevant(result, tokens: list[str]) -> bool:
 
 def _title_key(title: str) -> str:
     return re.sub(r"\W+", "", title.lower())[:60]
-
-
-def _decode_ddg_url(result) -> bool:
-    """Decodifica URLs de redirección de DuckDuckGo in-place. Devuelve False si no recuperable."""
-    import urllib.parse
-    url = getattr(result, "url", "")
-    if "duckduckgo.com/l/" in url or url.startswith("//duckduckgo"):
-        parsed = urllib.parse.urlparse(url if url.startswith("http") else "https:" + url)
-        uddg = urllib.parse.parse_qs(parsed.query).get("uddg", [""])
-        if uddg and uddg[0]:
-            result.url = urllib.parse.unquote(uddg[0])
-            return True
-        return False
-    return True
 
 
 def _is_health_query(query: str) -> bool:

@@ -133,10 +133,14 @@ Esto es lo que la versión MCP **no** reproduce — ver más abajo por qué.
 - Búsqueda débil en literatura clásica anglosajona (indexa bien producción
   hispanoamericana vía CrossRef/OpenAlex, pero consultas como autores
   clásicos en inglés devuelven ruido).
-- SciELO: `core/scielo.py` intenta primero `articlemeta` y cae a scraping
-  HTML si falla — en la práctica, la búsqueda por texto libre de SciELO está
-  bloqueada del lado del servidor (ver sección 4), así que esta fuente rinde
-  poco o nada dentro de Yatiri también.
+- SciELO: `core/scielo.py` intenta primero `articlemeta`, luego scraping HTML
+  directo — en la práctica ambos suelen fallar porque la búsqueda por texto
+  libre de SciELO está bloqueada del lado del servidor (ver sección 4).
+  Desde 2026-08-02 hay un tercer nivel, `search_scielo_web()`: cae a
+  DuckDuckGo restringido por dominio `scielo.*` cuando los dos anteriores no
+  traen nada. No es una búsqueda nativa de SciELO (sin filtro de
+  colección/país, calidad de ranking la de DuckDuckGo) pero en la práctica
+  sí trae resultados reales — verificado con varias consultas en vivo.
 - `status`, `scan`, `ask`, `run` requieren workspace inicializado
   (`.research/project.yaml`); `chat` no.
 
@@ -240,6 +244,13 @@ por un desafío anti-bot de todo el sitio (proof-of-work vía JavaScript,
 headers o User-Agent que lo resuelva, y no existe una API alternativa oficial
 con búsqueda por palabra clave (`articlemeta.scielo.org` nunca la tuvo, solo
 permite consultar por PID/ISSN/fecha exactos).
+
+El fallback vía DuckDuckGo (`search_scielo_web()`, sección 2 más arriba)
+mitiga esto en la práctica para ambas versiones, aunque no lo resuelve del
+todo: sigue sin haber búsqueda nativa de SciELO con filtros de
+colección/país, y la cobertura depende de qué tenga indexado DuckDuckGo. Se
+evaluó escribir a `scielo@scielo.org` pidiendo acceso de API registrado —
+pendiente, no se ha hecho.
 
 Existe además un servidor MCP **standalone** dedicado a SciELO
 (`~/IA_Modelos_y_Datos/mcp-servers/scielo-mcp/`, no versionado en este
